@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
 import { type Household, parseHousehold } from "./household";
 
-const STORAGE_KEY = "kordamooda.v1";
+// v1 used numeric ids. It is left alone so #15 can still move that data over.
+const STORAGE_KEY = "kordamooda.v2";
 
 const listeners = new Set<() => void>();
 let unsaved: { raw: string | null } | null = null;

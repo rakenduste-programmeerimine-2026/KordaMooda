@@ -8,6 +8,7 @@ import { Menu } from "@/components/Menu";
 import {
   type Chore,
   type Household,
+  type Id,
   markDone,
   nextMember,
   removeChore,
@@ -23,7 +24,7 @@ type Toast = {
   key: number;
   message: string;
   undo?: Household;
-  focusChoreId?: number;
+  focusChoreId?: Id;
 };
 
 export function Home({ household }: { household: Household }) {
@@ -36,9 +37,9 @@ export function Home({ household }: { household: Household }) {
   const toastRef = useRef<HTMLDivElement>(null);
   const topButtonRef = useRef<HTMLButtonElement>(null);
   const toastKey = useRef(0);
-  const coolingDown = useRef(new Set<number>());
+  const coolingDown = useRef(new Set<Id>());
 
-  function showToast(message: string, undo?: Household, focusChoreId?: number) {
+  function showToast(message: string, undo?: Household, focusChoreId?: Id) {
     toastKey.current += 1;
     setToast({ key: toastKey.current, message, undo, focusChoreId });
   }
