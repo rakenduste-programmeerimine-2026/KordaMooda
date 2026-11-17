@@ -245,7 +245,8 @@ input {
   align-items: center;
   min-height: 100dvh;
   padding: 2rem 1.25rem;
-  overflow: hidden;
+  /* clip, not hidden: a hidden box can still be scrolled, e.g. by autofocus on the code field. */
+  overflow: clip;
 }
 
 .start-glow {
