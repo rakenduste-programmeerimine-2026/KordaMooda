@@ -126,6 +126,7 @@ select results_eq(
 select results_eq(
   $$select count(*)::int from public.household_users where household_id = 'bbbbbbbb-0000-4000-8000-0000000000b0'$$,
   $$values (1)$$, 'võõrasse koju ei lisandunud kedagi');
+-- Viimase seadme lahkumisel jääb kodu 30 päevaks alles (#19, security_review.test.sql).
 select is(
   (select count(*)::int from public.members where household_id = 'aaaaaaaa-0000-4000-8000-0000000000a0'),
   2, 'kodu A liikmed jäid alles pärast lahkumist');

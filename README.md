@@ -61,8 +61,9 @@ Kui üks telefon muudab kodu, näeb teine seda ilma värskendamata (`src/lib/use
 Kodu loomisel või sellega liitumisel saab seade **anonüümse Supabase'i kasutaja**. Tabel `household_users` seob selle kasutaja koduga. Lihtsalt rakenduse avamine kedagi ei loo, seega robotid ja külastajad ei täida `auth.users` tabelit.
 
 - **Kui brauser kustutab küpsised** (privaatne aken, "Kustuta sirvimisandmed" või teine brauser), kaob seadme sessioon ja rakendus näitab StartScreen'i. Kodu ja tööd jäävad alles. Liitu uuesti kutsekoodiga, mille saad kaaslase telefonist (Menüü → Kutsu kaaslane).
-- **Kui kõik seadmed kaotavad sessiooni**, ei pääse koju enam keegi ligi. See on kontodeta lahenduse hind.
+- **Kui kõik seadmed kaotavad sessiooni**, pääseb koju ainult kutsekoodiga. Kui ka kood on kadunud, ei pääse koju enam keegi. See on kontodeta lahenduse hind.
 - **"Lahku kodust"** eemaldab ainult selle seadme seose. Kodu jääb teistele alles.
+- **Kui kodust lahkub viimane seade**, jääb kodu 30 päevaks alles ja sinna saab kutsekoodiga tagasi liituda. Pärast seda kustutatakse kodu koos töödega (#19).
 
 Sisselogimise testid on `test/db/session.test.ts` (käivitub koos teistega: `npm run test:db:api`, vt "Andmebaasi testid").
 

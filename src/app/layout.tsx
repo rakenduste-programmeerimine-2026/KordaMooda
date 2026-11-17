@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Onest } from "next/font/google";
+import { connection } from "next/server";
 import "./globals.css";
 
 const font = Onest({
@@ -21,7 +22,10 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Every page is rendered per request, so each gets the CSP nonce from proxy.ts (#19).
+  // A page built ahead of time would have no nonce and its scripts would be blocked.
+  await connection();
   return (
     <html lang="et" className={font.variable}>
       <body>{children}</body>

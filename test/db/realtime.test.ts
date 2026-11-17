@@ -133,6 +133,6 @@ describe("realtime üle API", { skip }, () => {
     await until(() => events.length >= 1);
 
     assert.ok(events.length >= 1);
-    assert.deepEqual(Object.keys(events[0].new).sort(), ["changed_at", "created_at", "id", "invite_code"]);
+    assert.deepEqual(Object.keys(events[0].new).sort(), ["abandoned_at", "changed_at", "created_at", "id", "invite_code"]);
   });
 });

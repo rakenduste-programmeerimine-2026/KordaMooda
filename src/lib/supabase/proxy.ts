@@ -10,8 +10,20 @@ import { hasSupabaseEnv, supabaseEnv } from "./env";
  * access token has to be renewed here. Without this people get logged out
  * at random, which for anonymous users means losing their household.
  */
-export async function updateSession(request: NextRequest): Promise<NextResponse> {
-  let response = NextResponse.next({ request });
+export async function updateSession(
+  request: NextRequest,
+  extraRequestHeaders: Record<string, string> = {},
+): Promise<NextResponse> {
+  /**
+   * Passes the request on to the page, with `extraRequestHeaders` (the CSP nonce) added.
+   * Built from request.headers each time, so cookies refreshed below are included.
+   */
+  const next = () => {
+    const headers = new Headers(request.headers);
+    for (const [key, value] of Object.entries(extraRequestHeaders)) headers.set(key, value);
+    return NextResponse.next({ request: { headers } });
+  };
+  let response = next();
 
   // The app still runs on the mock (#7) without Supabase settings.
   if (!hasSupabaseEnv()) return response;
@@ -26,7 +38,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
         // The new token goes to both the request (so this render sees it)
         // and the response (so the browser keeps it).
         for (const { name, value } of cookiesToSet) request.cookies.set(name, value);
-        response = NextResponse.next({ request });
+        response = next();
         for (const { name, value, options } of cookiesToSet) {
           response.cookies.set(name, value, options);
         }
