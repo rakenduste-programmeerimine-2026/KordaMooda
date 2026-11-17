@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Home } from "@/components/Home";
 import { StartScreen } from "@/components/StartScreen";
 import type { Household } from "@/lib/household";
@@ -22,6 +23,14 @@ export function App({ initial }: Props) {
     setLastInitial(initial);
     setHousehold(initial);
   }
+
+  // Back online: others may have changed things meanwhile, so fetch the newest state.
+  const router = useRouter();
+  useEffect(() => {
+    const refresh = () => router.refresh();
+    window.addEventListener("online", refresh);
+    return () => window.removeEventListener("online", refresh);
+  }, [router]);
 
   return (
     <MotionConfig reducedMotion="user">

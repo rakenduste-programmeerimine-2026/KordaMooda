@@ -6,7 +6,9 @@ import { AddChore } from "@/components/AddChore";
 import { ChoreCard } from "@/components/ChoreCard";
 import { Invite } from "@/components/Invite";
 import { Menu } from "@/components/Menu";
+import { OfflineNotice } from "@/components/OfflineNotice";
 import * as server from "@/lib/actions";
+import { callAction, useOnline } from "@/lib/connection";
 import {
   type Chore,
   type Household,
@@ -28,7 +30,43 @@ type Toast = {
   key: number;
   message: string;
   undo?: Undo;
+  /** "conflict": someone else was first. Not the user's fault, so it gets a calm look. */
+  tone?: "error" | "conflict";
 };
+
+function ToastIcon({ tone }: { tone: Toast["tone"] }) {
+  if (!tone) return null;
+  return (
+    <svg
+      className="toast-icon"
+      data-tone={tone}
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      aria-hidden
+    >
+      {tone === "conflict" ? (
+        <path
+          d="M20 11a8 8 0 0 0-14.7-4.4M4 4v3h3M4 13a8 8 0 0 0 14.7 4.4M20 20v-3h-3"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <path
+          d="M12 7.5v5.5M12 16.5h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
+    </svg>
+  );
+}
 
 /** Shown at once, before the server has answered. */
 type Pending = { kind: "done"; choreId: Id; doneAt: string } | { kind: "remove"; choreId: Id };
@@ -56,15 +94,16 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
   const [sheet, setSheet] = useState<"add" | "menu" | "invite" | null>(welcome ? "invite" : null);
   const [welcoming, setWelcoming] = useState(welcome);
   const [toast, setToast] = useState<Toast | null>(null);
+  const online = useOnline();
 
   const toastRef = useRef<HTMLDivElement>(null);
   const topButtonRef = useRef<HTMLButtonElement>(null);
   const toastKey = useRef(0);
   const coolingDown = useRef(new Set<Id>());
 
-  function showToast(message: string, undo?: Undo) {
+  function showToast(message: string, extra?: Pick<Toast, "undo" | "tone">) {
     toastKey.current += 1;
-    setToast({ key: toastKey.current, message, undo });
+    setToast({ key: toastKey.current, message, ...extra });
   }
 
   /** Sends a change to the server and keeps the screen in step with its answer. */
@@ -75,14 +114,16 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
   ) {
     startTransition(async () => {
       if (change) showPending(change);
-      const result = await request();
+      const result = await callAction(request);
       startTransition(() => {
         if (result.ok) {
           onSuccess(result.data);
-        } else {
+        } else if (result.latest) {
           // Someone else changed it first: show their version, not our old copy.
-          if (result.latest) onChange(result.latest);
-          showToast(result.error);
+          onChange(result.latest);
+          showToast(`${result.error} Näed nüüd uusimat seisu.`, { tone: "conflict" });
+        } else {
+          showToast(result.error, { tone: "error" });
         }
       });
     });
@@ -112,7 +153,7 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
   }, [toast]);
 
   function handleDone(chore: Chore) {
-    if (coolingDown.current.has(chore.id)) return;
+    if (!online || coolingDown.current.has(chore.id)) return;
     coolingDown.current.add(chore.id);
     setTimeout(() => coolingDown.current.delete(chore.id), DONE_COOLDOWN_MS);
 
@@ -120,8 +161,7 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
     setNow(doneAt);
     const next = nextMember(members, chore.currentMemberId);
     showToast(`${chore.name} tehtud. Järgmine: ${next.name}.`, {
-      kind: "done",
-      choreId: chore.id,
+      undo: { kind: "done", choreId: chore.id },
     });
     // `currentMemberId` is whose turn this phone showed, so a second phone can't skip a person.
     send(
@@ -151,7 +191,7 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
   }
 
   function handleRemove(chore: Chore) {
-    showToast(`${chore.name} eemaldatud.`, { kind: "remove", choreId: chore.id });
+    showToast(`${chore.name} eemaldatud.`, { undo: { kind: "remove", choreId: chore.id } });
     if (chores.length === 1) setEditing(false);
     topButtonRef.current?.focus();
     send({ kind: "remove", choreId: chore.id }, () => server.removeChore(chore.id), onChange);
@@ -178,6 +218,10 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
         </button>
       </header>
 
+      <OfflineNotice>
+        Ühendus puudub. Näed viimast teadaolevat seisu. Muuta saad, kui internet on tagasi.
+      </OfflineNotice>
+
       {chores.length === 0 ? (
         <motion.section
           className="empty"
@@ -190,6 +234,7 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
           <motion.button
             type="button"
             className="button button-primary"
+            disabled={!online}
             whileTap={{ scale: 0.96 }}
             onClick={() => setSheet("add")}
           >
@@ -211,6 +256,7 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
                 members={members}
                 now={now}
                 editing={editing}
+                disabled={!online}
                 onDone={() => handleDone(chore)}
                 onRemove={() => handleRemove(chore)}
               />
@@ -225,6 +271,7 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
             <motion.button
               type="button"
               className="fab"
+              disabled={!online}
               initial={{ scale: 0.8, opacity: 0, y: 12 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.8, opacity: 0, y: 12, transition: { duration: 0.14 } }}
@@ -259,11 +306,13 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
               exit={{ opacity: 0, y: 16, scale: 0.97 }}
               transition={snappy}
             >
+              <ToastIcon tone={toast.tone} />
               <span>{toast.message}</span>
               {toast.undo && (
                 <button
                   type="button"
                   className="button button-toast"
+                  disabled={!online}
                   onClick={() => handleUndo(toast)}
                 >
                   Võta tagasi

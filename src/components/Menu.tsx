@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { Sheet } from "@/components/Sheet";
+import { useOnline } from "@/lib/connection";
 import { snappy } from "@/lib/motion";
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 
 export function Menu({ canRemove, onInvite, onRemoveChores, onLeave, onClose }: Props) {
   const [confirming, setConfirming] = useState(false);
+  const online = useOnline();
 
   return (
     <Sheet title="Valikud" closeLabel="Sulge" onClose={onClose}>
@@ -39,7 +41,12 @@ export function Menu({ canRemove, onInvite, onRemoveChores, onLeave, onClose }: 
             >
               <p>See seade lahkub kodust. Teised näevad nimekirja edasi.</p>
               <div className="menu-confirm-actions">
-                <button type="button" className="button button-danger" onClick={onLeave}>
+                <button
+                  type="button"
+                  className="button button-danger"
+                  disabled={!online}
+                  onClick={onLeave}
+                >
                   Lahku
                 </button>
                 <button

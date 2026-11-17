@@ -5,6 +5,7 @@ import { type FormEvent, startTransition, useState, useTransition } from "react"
 import { Avatar } from "@/components/Avatar";
 import { Sheet } from "@/components/Sheet";
 import { addChore } from "@/lib/actions";
+import { callAction, useOnline } from "@/lib/connection";
 import {
   cleanChoreName,
   type Household,
@@ -30,6 +31,7 @@ export function AddChore({ household, onChange, onClose }: Props) {
   const [error, setError] = useState("");
   const [added, setAdded] = useState("");
   const [pending, startAdding] = useTransition();
+  const online = useOnline();
 
   const starterId = chosenStarterId ?? suggestStarter(household).id;
   const suggestions = COMMON_CHORES.filter(
@@ -48,7 +50,7 @@ export function AddChore({ household, onChange, onClose }: Props) {
       return;
     }
     startAdding(async () => {
-      const result = await addChore(cleanName, starterId);
+      const result = await callAction(() => addChore(cleanName, starterId));
       startTransition(() => {
         if (!result.ok) {
           if (result.latest) onChange(result.latest);
@@ -116,6 +118,7 @@ export function AddChore({ household, onChange, onClose }: Props) {
                     type="button"
                     className="button button-chip"
                     aria-label={`Lisa ${chore}`}
+                    disabled={!online}
                     exit={{ opacity: 0, scale: 0.7 }}
                     whileTap={{ scale: 0.94 }}
                     transition={snappy}
@@ -148,6 +151,7 @@ export function AddChore({ household, onChange, onClose }: Props) {
             <motion.button
               className="button button-primary"
               aria-disabled={pending || undefined}
+              disabled={!online}
               whileTap={{ scale: 0.95 }}
               transition={snappy}
             >

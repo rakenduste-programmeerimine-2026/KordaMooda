@@ -221,6 +221,14 @@ input {
   color: var(--ink);
 }
 
+/* filter, not opacity: motion sets opacity inline on animated buttons. */
+.button:disabled,
+.fab:disabled,
+.menu-item:disabled {
+  filter: opacity(0.4);
+  cursor: not-allowed;
+}
+
 @media (hover: hover) {
   .button-quiet:hover,
   .button-chip:hover {
@@ -467,12 +475,36 @@ input {
   -webkit-backdrop-filter: blur(16px) saturate(1.5);
 }
 
+.notice-slot {
+  overflow: hidden;
+}
+
 .notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  max-width: calc(72rem - 2 * var(--gutter));
   margin: 0 var(--gutter) 0.75rem;
   padding: 0.75rem 1rem;
   border-radius: 1rem;
   background: var(--ink);
   color: var(--bg);
+  font-weight: 550;
+}
+
+@media (min-width: 75rem) {
+  .notice {
+    margin-inline: auto;
+  }
+}
+
+.notice svg {
+  flex: none;
+  margin-top: 0.0625rem;
+}
+
+.start .notice {
+  margin: 1.5rem 0 0;
 }
 
 .empty {
@@ -694,6 +726,24 @@ input {
   font-size: 0.9375rem;
   box-shadow: 0 16px 36px -12px var(--shadow-color);
   pointer-events: auto;
+}
+
+.toast-icon {
+  flex: none;
+  margin-right: -0.25rem;
+}
+
+.toast-icon + span {
+  flex: 1;
+}
+
+/* The toast is dark on light screens and light on dark ones, so the colours swap too. */
+.toast-icon[data-tone="error"] { color: #ff8a94; }
+.toast-icon[data-tone="conflict"] { color: #8db4ff; }
+
+@media (prefers-color-scheme: dark) {
+  .toast-icon[data-tone="error"] { color: #c92a3d; }
+  .toast-icon[data-tone="conflict"] { color: #2563eb; }
 }
 
 .toast-timer {
@@ -935,6 +985,45 @@ input {
   text-align: center;
 }
 
+/* Loading */
+
+.skeleton-card {
+  --c: var(--ink);
+  gap: 0.75rem;
+  min-height: 11rem;
+  background: var(--surface);
+}
+
+.skeleton {
+  display: block;
+  border-radius: 0.5rem;
+  background: var(--quiet);
+  animation: shimmer 1.4s ease-in-out infinite alternate;
+}
+
+.skeleton-title {
+  width: 35%;
+  height: 1.125rem;
+}
+
+.skeleton-name {
+  width: 55%;
+  height: 2.75rem;
+}
+
+.skeleton-row {
+  width: 100%;
+  height: 3rem;
+  margin-top: auto;
+  border-radius: 999px;
+}
+
+@keyframes shimmer {
+  to {
+    opacity: 0.45;
+  }
+}
+
 @media (min-width: 40rem) {
   :root {
     --gutter: 1.5rem;
@@ -943,7 +1032,8 @@ input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .start-glow span {
+  .start-glow span,
+  .skeleton {
     animation: none;
   }
 
