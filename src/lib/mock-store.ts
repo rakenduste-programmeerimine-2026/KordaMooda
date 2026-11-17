@@ -10,6 +10,7 @@ import {
   createHousehold,
   createInviteCode,
   type Household,
+  householdFromSaved,
   HouseholdError,
   type Id,
   markDone,
@@ -47,6 +48,10 @@ function findChore(household: Household, choreId: Id): Chore {
 
 export function mockCreate(store: MockStore, names: string[]): Household {
   return save(store, createHousehold(names));
+}
+
+export function mockImport(store: MockStore, saved: string): Household {
+  return save(store, householdFromSaved(saved));
 }
 
 export function mockGet(store: MockStore, householdId: Id): Household | null {

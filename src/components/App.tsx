@@ -11,9 +11,11 @@ import { useStayFresh } from "@/lib/useStayFresh";
 type Props = {
   /** What the server had when the page was rendered. */
   initial: Household | null;
+  /** Whether an old list saved in this browser can be moved to the server (#15). */
+  canImport: boolean;
 };
 
-export function App({ initial }: Props) {
+export function App({ initial, canImport }: Props) {
   const [household, setHousehold] = useState(initial);
   const [created, setCreated] = useState(false);
   const [remote, setRemote] = useState<RemoteChange | null>(null);
@@ -55,6 +57,7 @@ export function App({ initial }: Props) {
             />
           ) : (
             <StartScreen
+              canImport={canImport}
               onJoined={(joined, isNew) => {
                 setCreated(isNew);
                 setHousehold(joined);

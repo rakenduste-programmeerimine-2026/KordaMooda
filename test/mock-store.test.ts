@@ -5,6 +5,7 @@ import {
   createMockStore,
   mockAddChore,
   mockCreate,
+  mockImport,
   mockJoin,
   mockMarkDone,
   mockNewInviteCode,
@@ -80,4 +81,21 @@ test("one household cannot undo another household's removal", () => {
 
   mockRemoveChore(store, home.id, choreId);
   assert.throws(() => mockUndoRemove(store, other.id, choreId), ConflictError);
+});
+
+test("an imported list can be joined like any household", () => {
+  const store = createMockStore();
+  const saved = JSON.stringify({
+    members: [
+      { id: 0, name: "Mari" },
+      { id: 1, name: "Jaan" },
+    ],
+    chores: [{ id: 2, name: "Prügi", currentMemberId: 1, last: null }],
+    nextId: 3,
+  });
+  const home = mockImport(store, saved);
+
+  assert.equal(mockJoin(store, home.inviteCode).id, home.id);
+  assert.equal(home.chores[0].currentMemberId, home.members[1].id);
+  assert.throws(() => mockImport(store, "{}"), HouseholdError);
 });
