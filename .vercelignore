@@ -1,0 +1,3 @@
+# Kohalikud saladused ei lähe Vercelisse; seal on oma keskkonnamuutujad.
+.env*
+!.env.example

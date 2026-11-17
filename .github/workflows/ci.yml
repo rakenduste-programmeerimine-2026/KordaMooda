@@ -1,0 +1,74 @@
+# CI (#16): käivitub igal PR-il ja main'i pushil.
+# Branch protection nõuab, et mõlemad tööd oleksid rohelised, enne kui PR-i saab mergida.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Uus push samasse harru katkestab vana, veel jooksva käivituse.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: Lint, testid ja build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  database:
+    name: Andmebaasi testid
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Lokaalne Supabase Dockeris koos kõigi migratsioonidega.
+      # Testid vajavad ainult andmebaasi, auth'i (anonüümne sisselogimine) ja REST API-t.
+      - name: Käivita Supabase
+        run: >-
+          npx supabase start
+          -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+
+      - name: pgTAP testid (RLS, mark_done, undo_done)
+        run: npm run test:db
+
+      - name: Kirjuta .env.local lokaalse Supabase'i seadetega
+        run: |
+          npx supabase status -o env \
+            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+            --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            --override-name db.url=SUPABASE_DB_URL \
+            | grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_DB_URL)=' > .env.local
+          # Ilma nendeta jätaks test:db:api testid vaikselt vahele ja CI oleks ekslikult roheline.
+          for name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_DB_URL; do
+            grep -q "^$name=\"\?[^\"]" .env.local || { echo "::error::$name puudub supabase status väljundist"; exit 1; }
+          done
+          sed -E 's/=.*/=…/' .env.local
+
+      - name: API testid (samaaegsed vajutused, kodude eraldatus)
+        run: npm run test:db:api
+
+      - name: Peata Supabase
+        if: always()
+        run: npx supabase stop --no-backup
