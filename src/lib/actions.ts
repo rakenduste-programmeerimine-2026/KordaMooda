@@ -21,6 +21,7 @@ import {
   mockAddChore,
   mockCreate,
   mockGet,
+  mockImport,
   mockJoin,
   mockMarkDone,
   mockNewInviteCode,
@@ -120,6 +121,23 @@ export async function createHousehold(names: string[]): Promise<Result<Household
   if (USE_SUPABASE) return runSupabase((supabase) => households.createHousehold(supabase, names));
   return run(async () => {
     const household = mockCreate(store, names);
+    await setSession(household.id);
+    return household;
+  }, false);
+}
+
+/**
+ * Creates a household from a list an earlier version saved in this browser (#15),
+ * keeping its people, chores and whose turn it is, and joins it on this device.
+ * `saved` is the raw localStorage value; it is checked like any other input.
+ */
+export async function importHousehold(saved: string): Promise<Result<Household>> {
+  if (USE_SUPABASE) {
+    // Maiko (#15): Supabase'i versioon, mis loob liikmed ja tööd koos järjekorraga.
+    return { ok: false, error: "Vana nimekirja üleviimine pole veel valmis." };
+  }
+  return run(async () => {
+    const household = mockImport(store, saved);
     await setSession(household.id);
     return household;
   }, false);

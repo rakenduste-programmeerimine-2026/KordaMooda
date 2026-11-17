@@ -3,6 +3,7 @@
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type FormEvent, startTransition, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
+import { ImportSaved } from "@/components/ImportSaved";
 import { JoinForm } from "@/components/JoinForm";
 import { OfflineNotice } from "@/components/OfflineNotice";
 import { createHousehold } from "@/lib/actions";
@@ -80,6 +81,9 @@ export function StartScreen({ onJoined }: Props) {
         <OfflineNotice>
           Ühendus puudub. Kodu loomiseks või liitumiseks on vaja internetti.
         </OfflineNotice>
+
+        {/* Imported lists open the invite sheet, like a new household. */}
+        <ImportSaved onImported={(household) => onJoined(household, true)} />
 
         <motion.div variants={rise}>
           <AnimatePresence mode="wait" initial={false}>

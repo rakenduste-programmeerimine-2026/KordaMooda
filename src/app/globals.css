@@ -361,6 +361,36 @@ input {
   font-weight: 600;
 }
 
+.import-card {
+  display: grid;
+  gap: 0.625rem;
+  margin-top: 1.5rem;
+  padding: 1.125rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    0 14px 30px -18px var(--shadow-color);
+}
+
+.import-card h2 {
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.import-card p {
+  color: var(--muted);
+}
+
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
 .start-paths {
   display: grid;
   grid-template-columns: 1fr 1fr;
