@@ -203,6 +203,71 @@ export function relativeDay(iso: string, now: string): string {
   return `${days} päeva tagasi`;
 }
 
+/** Saved lists bigger than this are not a real household. */
+const MAX_SAVED_LENGTH = 50_000;
+const BROKEN_SAVED_LIST = "Selles brauseris salvestatud nimekirja ei saanud lugeda.";
+
+/**
+ * Turns a list saved in the browser by an earlier version (#15) into a new household:
+ * the prototype's `kordamooda.v1` (number ids) or `kordamooda.v2` (uuids). Everything is
+ * checked with the same rules as a new household, and gets fresh ids and invite code,
+ * because the data comes from the browser and can't be trusted. Throws HouseholdError.
+ */
+export function householdFromSaved(raw: string): Household {
+  let data: unknown;
+  try {
+    data = raw.length <= MAX_SAVED_LENGTH ? JSON.parse(raw) : null;
+  } catch {
+    data = null;
+  }
+  const saved = data as { members?: unknown; chores?: unknown } | null;
+  if (!saved || !Array.isArray(saved.members) || !Array.isArray(saved.chores)) {
+    throw new HouseholdError(BROKEN_SAVED_LIST);
+  }
+  const savedMembers = saved.members as { id?: unknown; name?: unknown }[];
+  const savedChores = saved.chores as {
+    name?: unknown;
+    currentMemberId?: unknown;
+    last?: { memberId?: unknown; doneAt?: unknown } | null;
+  }[];
+
+  const oldIds = savedMembers.map((member) => member?.id);
+  const validIds = oldIds.every(
+    (id, i) => (typeof id === "number" || typeof id === "string") && oldIds.indexOf(id) === i,
+  );
+  const validNames = savedMembers.every(
+    (member) => typeof member.name === "string" && member.name.trim() !== "",
+  );
+  if (!validIds || !validNames) throw new HouseholdError(BROKEN_SAVED_LIST);
+
+  const names = cleanMemberNames(savedMembers.map((member) => member.name as string));
+  const members = names.map((name) => ({ id: newId(), name }));
+  const newIdFor = (oldId: unknown) => members[oldIds.indexOf(oldId as number | string)]?.id;
+
+  let household: Household = { id: newId(), inviteCode: createInviteCode(), members, chores: [] };
+  for (const chore of savedChores) {
+    const currentMemberId = newIdFor(chore?.currentMemberId);
+    if (typeof chore?.name !== "string" || !currentMemberId) {
+      throw new HouseholdError(BROKEN_SAVED_LIST);
+    }
+    const lastMemberId = chore.last ? newIdFor(chore.last.memberId) : null;
+    const doneAt = chore.last?.doneAt;
+    const validLast =
+      lastMemberId && typeof doneAt === "string" && !Number.isNaN(Date.parse(doneAt));
+
+    const last = validLast
+      ? { memberId: lastMemberId, doneAt: new Date(doneAt).toISOString() }
+      : null;
+    const withChore = addChore(household, chore.name, currentMemberId);
+    const added = withChore.chores.at(-1)!;
+    household = {
+      ...withChore,
+      chores: withChore.chores.map((c) => (c.id === added.id ? { ...c, last } : c)),
+    };
+  }
+  return household;
+}
+
 /** Returns null for anything that isn't a household, such as damaged saved data. */
 export function parseHousehold(raw: string): Household | null {
   try {

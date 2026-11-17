@@ -7,6 +7,7 @@ import {
   createInviteCode,
   formatInviteCode,
   HouseholdError,
+  householdFromSaved,
   initialsFor,
   INVITE_ALPHABET,
   INVITE_CODE_LENGTH,
@@ -168,4 +169,51 @@ test("changedChores finds what another phone changed", () => {
   assert.deepEqual(changedChores(withDishes, markDone(withDishes, chore.id, NOW)), [chore.id]);
   // A removed chore has no card left to point at.
   assert.deepEqual(changedChores(withDishes, removeChore(withDishes, dishes.id)), []);
+});
+
+// What the prototype saved under "kordamooda.v1".
+const PROTOTYPE_LIST = JSON.stringify({
+  members: [
+    { id: 0, name: "Mari" },
+    { id: 1, name: "Jaan" },
+  ],
+  chores: [
+    { id: 2, name: "Prügi", currentMemberId: 1, last: { memberId: 0, doneAt: NOW } },
+    { id: 3, name: "Nõud", currentMemberId: 0, last: null },
+  ],
+  nextId: 4,
+});
+
+test("a list saved by the prototype becomes a household with the same turns", () => {
+  const home = householdFromSaved(PROTOTYPE_LIST);
+  const [mari, jaan] = home.members;
+
+  assert.deepEqual(home.members.map((m) => m.name), ["Mari", "Jaan"]);
+  assert.deepEqual(home.chores.map((c) => c.name), ["Prügi", "Nõud"]);
+  assert.equal(home.chores[0].currentMemberId, jaan.id);
+  assert.deepEqual(home.chores[0].last, { memberId: mari.id, doneAt: NOW });
+  assert.equal(home.chores[1].currentMemberId, mari.id);
+  assert.equal(home.chores[1].last, null);
+  assert.equal(home.inviteCode.length, INVITE_CODE_LENGTH);
+  assert.notEqual(householdFromSaved(PROTOTYPE_LIST).id, home.id);
+});
+
+test("a v2 list (uuids) is read the same way", () => {
+  const { home } = setup();
+  const copy = householdFromSaved(JSON.stringify(home));
+  assert.deepEqual(copy.chores.map((c) => c.name), ["Prügi"]);
+  assert.notEqual(copy.members[0].id, home.members[0].id);
+});
+
+test("damaged or tampered saved lists are refused with the usual rules", () => {
+  rejects(() => householdFromSaved("{not json"));
+  rejects(() => householdFromSaved("null"));
+  rejects(() => householdFromSaved('{"members":[{"id":0,"name":"Mari"}],"chores":[]}'));
+  const members = [
+    { id: 0, name: "A" },
+    { id: 1, name: "B" },
+  ];
+  const withChore = (chore: object) => JSON.stringify({ members, chores: [chore] });
+  rejects(() => householdFromSaved(withChore({ name: "X", currentMemberId: 7 })));
+  rejects(() => householdFromSaved(withChore({ name: "x".repeat(80), currentMemberId: 0 })));
 });
