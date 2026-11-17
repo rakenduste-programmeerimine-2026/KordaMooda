@@ -139,8 +139,11 @@ describe("andmebaas üle API", { skip }, () => {
 
     const rename = await stranger.from("chores").update({ name: "Häkitud" }).eq("id", choreId).select();
     assert.deepEqual(rename.data, []);
-    const remove = await stranger.from("chores").delete().eq("id", choreId).select();
-    assert.deepEqual(remove.data, []);
+    // Directly deleting is not allowed for anyone since #10 (soft delete via remove_chore).
+    const remove = await stranger.from("chores").delete().eq("id", choreId);
+    assert.equal(remove.error?.code, "42501");
+    const removeRpc = await stranger.rpc("remove_chore", { chore_id: choreId });
+    assert.equal(removeRpc.error?.message, "Seda tööd pole olemas.");
 
     const markDone = await stranger.rpc("mark_done", {
       chore_id: choreId,
@@ -155,5 +158,5 @@ describe("andmebaas üle API", { skip }, () => {
     assert.equal(still?.name, "Pesu");
   });
 
-  test.todo("join_household vale koodiga ei lisa kedagi, õige koodiga lisab (#9)");
+  // join_household (#9): vt test/db/households.test.ts
 });

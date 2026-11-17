@@ -25,14 +25,14 @@ export type Database = {
           Tables: {
             "chores": {
                   Row: {
-                    "created_at": string,"current_member_id": string,"household_id": string,"id": string,"last_done_at": string | null,"last_done_by": string | null,"last_member_id": string | null,"name": string,"prev_last_done_at": string | null,"prev_last_member_id": string | null
+                    "created_at": string,"current_member_id": string,"household_id": string,"id": string,"last_done_at": string | null,"last_done_by": string | null,"last_member_id": string | null,"name": string,"prev_last_done_at": string | null,"prev_last_member_id": string | null,"removed_at": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"current_member_id": string,"household_id": string,"id"?: string,"last_done_at"?: string | null,"last_done_by"?: string | null,"last_member_id"?: string | null,"name": string,"prev_last_done_at"?: string | null,"prev_last_member_id"?: string | null
+                    "created_at"?: string,"current_member_id": string,"household_id": string,"id"?: string,"last_done_at"?: string | null,"last_done_by"?: string | null,"last_member_id"?: string | null,"name": string,"prev_last_done_at"?: string | null,"prev_last_member_id"?: string | null,"removed_at"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"current_member_id"?: string,"household_id"?: string,"id"?: string,"last_done_at"?: string | null,"last_done_by"?: string | null,"last_member_id"?: string | null,"name"?: string,"prev_last_done_at"?: string | null,"prev_last_member_id"?: string | null
+                    "created_at"?: string,"current_member_id"?: string,"household_id"?: string,"id"?: string,"last_done_at"?: string | null,"last_done_by"?: string | null,"last_member_id"?: string | null,"name"?: string,"prev_last_done_at"?: string | null,"prev_last_member_id"?: string | null,"removed_at"?: string | null
                   }
                   Relationships: [
                     {
@@ -83,14 +83,14 @@ isOneToOne: false
                   ]
                 },"households": {
                   Row: {
-                    "created_at": string,"id": string,"invite_code": string
+                    "changed_at": string,"created_at": string,"id": string,"invite_code": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"invite_code"?: string
+                    "changed_at"?: string,"created_at"?: string,"id"?: string,"invite_code"?: string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"invite_code"?: string
+                    "changed_at"?: string,"created_at"?: string,"id"?: string,"invite_code"?: string
                   }
                   Relationships: [
                     
@@ -127,8 +127,20 @@ isOneToOne: false
 "generate_invite_code":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"join_household":
+{ Args: { "code": string }; Returns: string
+                           },
 "mark_done":
 { Args: { "chore_id": string,"expected_member_id": string }; Returns: string
+                           },
+"new_invite_code":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
+"remove_chore":
+{ Args: { "chore_id": string }; Returns: string
+                           },
+"restore_chore":
+{ Args: { "chore_id": string }; Returns: string
                            },
 "undo_done":
 { Args: { "chore_id": string }; Returns: string
