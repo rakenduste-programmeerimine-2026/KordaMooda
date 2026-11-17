@@ -15,6 +15,9 @@ import { ensureUserId, loadHousehold } from "./session.ts";
 
 type Supabase = SupabaseClient<Database>;
 
+/** The database's code for a rate limit: too many wrong invite codes or new households. */
+const TOO_MANY_ATTEMPTS = "KM429";
+
 /**
  * Creates a household with these people and links this device to it.
  * Throws HouseholdError (Estonian, for the user) for invalid names.
@@ -27,15 +30,15 @@ export async function createHousehold(supabase: Supabase, rawNames: string[]): P
   const { data: householdId, error } = await supabase.rpc("create_household", {
     member_names: names,
   });
+  if (error?.code === TOO_MANY_ATTEMPTS) {
+    throw new HouseholdError("Liiga palju uusi kodusid. Proovi tunni aja pärast uuesti.");
+  }
   if (error) throw error;
 
   const household = await loadHousehold(supabase, householdId);
   if (!household) throw new Error("Loodud kodu ei leitud. RLS ei luba seda lugeda?");
   return household;
 }
-
-/** The database's code for "too many wrong invite codes" (see the join_household migration). */
-const TOO_MANY_ATTEMPTS = "KM429";
 
 /**
  * Links this device to the household with this invite code. Case, spaces and dashes
