@@ -37,6 +37,21 @@ Uus skeemimuudatus: `npx supabase migration new <nimi>`, kirjuta SQL loodud fail
 
 `.env.local` on `.gitignore`-is. Ära pane võtmeid reposse.
 
+Pärast iga skeemimuudatust genereeri TypeScripti tüübid uuesti:
+
+```bash
+npm run db:types          # lokaalsest Supabase'ist (vajab Dockerit)
+npm run db:types:remote   # ühisest projektist (vajab `npx supabase login`)
+```
+
+Koodis kasuta Supabase'i ainult nende failide kaudu:
+
+- `src/lib/supabase/server.ts`: server actionites ja serverikomponentides. Loo igas päringus uus klient.
+- `src/lib/supabase/client.ts`: brauseris, ainult realtime'i jaoks (#13).
+- `src/proxy.ts`: värskendab igal päringul sessiooni. Ilma `.env.local`-ita jäetakse see vahele ja rakendus töötab mockiga.
+
+Rakenduses on ainult anon-võti, seega RLS kehtib alati. `service_role` võtit rakendus ei kasuta ja see ei tohi `.env.local`-isse sattuda.
+
 ### Muud käsud
 
 ```bash
