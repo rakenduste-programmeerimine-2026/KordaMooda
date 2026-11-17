@@ -69,12 +69,17 @@ function ToastIcon({ tone }: { tone: Toast["tone"] }) {
 }
 
 /** Shown at once, before the server has answered. */
-type Pending = { kind: "done"; choreId: Id; doneAt: string } | { kind: "remove"; choreId: Id };
+type Pending =
+  | { kind: "done"; choreId: Id; memberId: Id; doneAt: string }
+  | { kind: "remove"; choreId: Id };
 
 function applyPending(household: Household, change: Pending): Household {
-  return change.kind === "done"
-    ? markDone(household, change.choreId, change.doneAt)
-    : removeChore(household, change.choreId);
+  if (change.kind === "remove") return removeChore(household, change.choreId);
+  // If a newer server copy already has this "Tehtud" (e.g. via realtime), the turn has
+  // moved on: applying it again would skip a person on screen.
+  const chore = household.chores.find((c) => c.id === change.choreId);
+  if (chore?.currentMemberId !== change.memberId) return household;
+  return markDone(household, change.choreId, change.doneAt);
 }
 
 /** Chores another phone changed. A new `key` means a new change to point out. */
@@ -179,7 +184,7 @@ export function Home({ household: saved, onChange, welcome = false, remote = nul
     });
     // `currentMemberId` is whose turn this phone showed, so a second phone can't skip a person.
     send(
-      { kind: "done", choreId: chore.id, doneAt },
+      { kind: "done", choreId: chore.id, memberId: chore.currentMemberId, doneAt },
       () => server.markDone(chore.id, chore.currentMemberId),
       onChange,
     );
