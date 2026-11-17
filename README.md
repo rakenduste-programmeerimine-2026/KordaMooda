@@ -60,6 +60,19 @@ npm run lint
 npm run build
 ```
 
+### Andmebaasi testid
+
+Testid jooksevad lokaalse Supabase'i vastu, seega on vaja Dockerit ja `npx supabase start`-i.
+
+```bash
+npm run test:db       # pgTAP: RLS ja mark_done/undo_done (supabase/tests/database/)
+npm run test:db:api   # Node: samaaegsed vajutused päris API kaudu (test/db/)
+```
+
+`test:db` käivitab iga faili transaktsioonis, mis lõpus tagasi keeratakse. Andmebaasi ei jää midagi maha.
+
+`test:db:api` vajab `.env.local`-is lokaalse Supabase'i URL-i ja anon-võtit ning `SUPABASE_DB_URL`-i (vt `.env.example`). Kui need puuduvad, jäetakse test vahele. Test loob ise testkodud ja anonüümsed kasutajad ning kustutab need lõpus.
+
 ## Teadaolev piirang
 
 Rakendus kasutab veel brauseri `localStorage`-it. Andmebaasi skeem on olemas, aga frontend pole sellega veel ühendatud (#5, #11).
@@ -69,5 +82,5 @@ Rakendus kasutab veel brauseri `localStorage`-it. Andmebaasi skeem on olemas, ag
 - `src/lib/household.ts`: järjekorra loogika puhaste funktsioonidena
 - `src/lib/useHousehold.ts`: andmete lugemine ja salvestamine `localStorage`-is
 - `src/components/`: vaated
-- `test/`: loogika testid
-- `supabase/`: Supabase CLI seadistus ja andmebaasi migratsioonid
+- `test/`: loogika testid, `test/db/`: andmebaasi testid üle API
+- `supabase/`: Supabase CLI seadistus, migratsioonid ja pgTAP testid (`supabase/tests/`)
