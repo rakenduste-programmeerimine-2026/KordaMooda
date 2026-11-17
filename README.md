@@ -50,6 +50,16 @@ Koodis kasuta Supabase'i ainult nende failide kaudu:
 - `src/lib/supabase/client.ts`: brauseris, ainult realtime'i jaoks (#13).
 - `src/proxy.ts`: värskendab igal päringul sessiooni. Ilma `.env.local`-ita jäetakse see vahele ja rakendus töötab mockiga.
 
+### Sisselogimine (kontosid pole)
+
+Kodu loomisel või sellega liitumisel saab seade **anonüümse Supabase'i kasutaja**. Tabel `household_users` seob selle kasutaja koduga. Lihtsalt rakenduse avamine kedagi ei loo, seega robotid ja külastajad ei täida `auth.users` tabelit.
+
+- **Kui brauser kustutab küpsised** (privaatne aken, "Kustuta sirvimisandmed" või teine brauser), kaob seadme sessioon ja rakendus näitab StartScreen'i. Kodu ja tööd jäävad alles. Liitu uuesti kutsekoodiga, mille saad kaaslase telefonist (Menüü → Kutsu kaaslane).
+- **Kui kõik seadmed kaotavad sessiooni**, ei pääse koju enam keegi ligi. See on kontodeta lahenduse hind.
+- **"Lahku kodust"** eemaldab ainult selle seadme seose. Kodu jääb teistele alles.
+
+Sisselogimise testid on `test/db/session.test.ts` (käivitub koos teistega: `npm run test:db:api`, vt "Andmebaasi testid").
+
 Rakenduses on ainult anon-võti, seega RLS kehtib alati. `service_role` võtit rakendus ei kasuta ja see ei tohi `.env.local`-isse sattuda.
 
 ### Muud käsud
@@ -66,12 +76,12 @@ Testid jooksevad lokaalse Supabase'i vastu, seega on vaja Dockerit ja `npx supab
 
 ```bash
 npm run test:db       # pgTAP: RLS ja mark_done/undo_done (supabase/tests/database/)
-npm run test:db:api   # Node: samaaegsed vajutused päris API kaudu (test/db/)
+npm run test:db:api   # Node päris API kaudu: samaaegsed vajutused ja sisselogimine (test/db/)
 ```
 
 `test:db` käivitab iga faili transaktsioonis, mis lõpus tagasi keeratakse. Andmebaasi ei jää midagi maha.
 
-`test:db:api` vajab `.env.local`-is lokaalse Supabase'i URL-i ja anon-võtit ning `SUPABASE_DB_URL`-i (vt `.env.example`). Kui need puuduvad, jäetakse test vahele. Test loob ise testkodud ja anonüümsed kasutajad ning kustutab need lõpus.
+`test:db:api` vajab `.env.local`-is lokaalse Supabase'i URL-i ja anon-võtit ning `SUPABASE_DB_URL`-i (vt `.env.example`). Kui need puuduvad, jäetakse test vahele. Testid loovad ise testkodud ja anonüümsed kasutajad ning kustutavad need lõpus.
 
 ## Teadaolev piirang
 
