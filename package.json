@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "node --test test/*.test.ts",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
-    "db:types:remote": "supabase gen types typescript --project-id diiftdfkcrhfpyuxnkde > src/lib/supabase/database.types.ts"
+    "db:types:remote": "supabase gen types typescript --project-id diiftdfkcrhfpyuxnkde > src/lib/supabase/database.types.ts",
+    "test:integration": "node --env-file-if-exists=.env.local --test test/integration/*.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

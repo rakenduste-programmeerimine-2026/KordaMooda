@@ -50,6 +50,16 @@ Koodis kasuta Supabase'i ainult nende failide kaudu:
 - `src/lib/supabase/client.ts`: brauseris, ainult realtime'i jaoks (#13).
 - `src/proxy.ts`: värskendab igal päringul sessiooni. Ilma `.env.local`-ita jäetakse see vahele ja rakendus töötab mockiga.
 
+### Sisselogimine (kontosid pole)
+
+Kodu loomisel või sellega liitumisel saab seade **anonüümse Supabase'i kasutaja**. Tabel `household_users` seob selle kasutaja koduga. Lihtsalt rakenduse avamine kedagi ei loo, seega robotid ja külastajad ei täida `auth.users` tabelit.
+
+- **Kui brauser kustutab küpsised** (privaatne aken, "Kustuta sirvimisandmed" või teine brauser), kaob seadme sessioon ja rakendus näitab StartScreen'i. Kodu ja tööd jäävad alles. Liitu uuesti kutsekoodiga, mille saad kaaslase telefonist (Menüü → Kutsu kaaslane).
+- **Kui kõik seadmed kaotavad sessiooni**, ei pääse koju enam keegi ligi. See on kontodeta lahenduse hind.
+- **"Lahku kodust"** eemaldab ainult selle seadme seose. Kodu jääb teistele alles.
+
+Integratsioonitestid ühise projekti vastu (loovad anonüümseid kasutajaid): `npm run test:integration`.
+
 Rakenduses on ainult anon-võti, seega RLS kehtib alati. `service_role` võtit rakendus ei kasuta ja see ei tohi `.env.local`-isse sattuda.
 
 ### Muud käsud

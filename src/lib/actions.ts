@@ -30,6 +30,15 @@ import {
   type MockStore,
 } from "./mock-store.ts";
 import type { Result } from "./result.ts";
+import { createClient } from "./supabase/server.ts";
+import * as session from "./supabase/session.ts";
+
+/**
+ * "mock" (default) or "supabase". Stays on the mock until every action has a
+ * Supabase version (#8, #9, #10), so the app never runs half on each.
+ * Set KORDAMOODA_BACKEND=supabase in .env.local to try the finished parts.
+ */
+const USE_SUPABASE = process.env.KORDAMOODA_BACKEND === "supabase";
 
 // ---------------------------------------------------------------------------
 // Mock plumbing. Everything in this section goes away when Supabase is wired in.
@@ -80,6 +89,7 @@ async function run<T>(work: (householdId: Id) => T | Promise<T>, needsHousehold 
 
 /** The caller's household, or `null` if this device hasn't created or joined one (→ StartScreen). */
 export async function getHousehold(): Promise<Household | null> {
+  if (USE_SUPABASE) return session.getCurrentHousehold(await createClient());
   const householdId = await sessionHouseholdId();
   return householdId ? mockGet(store, householdId) : null;
 }
@@ -104,6 +114,10 @@ export async function joinHousehold(code: string): Promise<Result<Household>> {
 
 /** Disconnects this device. The household itself stays for the others. */
 export async function leaveHousehold(): Promise<Result<null>> {
+  if (USE_SUPABASE) {
+    await session.leaveHousehold(await createClient());
+    return { ok: true, data: null };
+  }
   return run(async () => {
     await setSession(null);
     return null;
