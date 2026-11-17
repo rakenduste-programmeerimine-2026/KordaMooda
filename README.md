@@ -2,6 +2,8 @@
 
 Rakendus koos elavatele paaridele ja korterikaaslastele, kes jagavad kodutöid. Avamisel on kohe näha, kelle kord iga töö on.
 
+**Avalik aadress:** <https://kordamooda.vercel.app>
+
 ## Põhifunktsioonid
 
 1. Kodutööde lisamine (prügi, nõud, koristamine, pesu või oma töö).
@@ -83,14 +85,41 @@ npm run test:db:api   # Node päris API kaudu: samaaegsed vajutused ja sisselogi
 
 `test:db:api` vajab `.env.local`-is lokaalse Supabase'i URL-i ja anon-võtit ning `SUPABASE_DB_URL`-i (vt `.env.example`). Kui need puuduvad, jäetakse test vahele. Testid loovad ise testkodud ja anonüümsed kasutajad ning kustutavad need lõpus.
 
+## Avaldamine (Vercel)
+
+Rakendus on Vercelis projektina `kordamooda` (Maiko konto). Production-aadress on <https://kordamooda.vercel.app> ja regioon on Stockholm.
+
+- **Keskkonnamuutujad** on Vercelis (Production ja Preview): `NEXT_PUBLIC_SUPABASE_URL` ja `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Uus muutuja lisatakse käsuga `npx vercel env add <NIMI> production` (ja `preview`).
+- **Deploy:** Vercel pole veel GitHubi repoga ühendatud, sest organisatsiooni repo ühendamiseks on vaja organisatsiooni omaniku luba. Seni teeb deploy Maiko käsitsi `main`-ist: `npx vercel deploy --prod`. Pärast ühendamist läheb iga `main`-i push automaatselt üles ja iga PR saab oma preview-lingi.
+- `.vercelignore` jätab `.env*` failid välja, nii et kohalikud saladused Vercelisse ei satu.
+- Supabase'i Authis pole lubatud URL-e vaja seadistada, sest anonüümne sisselogimine ei kasuta e-posti ega OAuthi suunamisi. Kui need kunagi lisanduvad, tuleb Verceli domeen lisada Supabase'is: Authentication → URL Configuration.
+
+## Töövoog
+
+1. Võta värske `main` ja tee issue jaoks haru:
+   ```bash
+   git checkout main && git pull
+   git checkout -b 16-ci   # <issue nr>-<lühike nimi>
+   ```
+2. Commiti väikeste tükkidena, sõnum eesti keeles ja viitega issuele (`Refs #16`). Enne pushi käivita `npm test`, `npm run lint` ja `npm run build`.
+3. Ava PR `main`-i vastu. Kirjelduses `Closes #<nr>`, siis sulgub issue mergimisel ise.
+4. **CI** (`.github/workflows/ci.yml`) käivitub igal PR-il ja `main`-i pushil:
+   - *Lint, testid ja build*: `npm ci`, `npm run lint`, `npm test`, `npm run build`
+   - *Andmebaasi testid*: käivitab Dockeris lokaalse Supabase'i kõigi migratsioonidega, siis `npm run test:db` (pgTAP) ja `npm run test:db:api`
+5. **Ülevaatus**: teine tiimiliige vaatab PR-i üle ja kiidab heaks.
+6. **Merge**: `main` on kaitstud. PR-i saab mergida alles siis, kui mõlemad CI tööd on rohelised ja üks tiimiliige on heaks kiitnud. Otse `main`-i pushida ei saa.
+
+Täpsemad tiimi reeglid on failis [AGENTS.md](AGENTS.md).
+
 ## Teadaolev piirang
 
-Rakendus kasutab veel brauseri `localStorage`-it. Andmebaasi skeem on olemas, aga frontend pole sellega veel ühendatud (#5, #11).
+Frontend kasutab server actioneid (`src/lib/actions.ts`), aga need töötavad veel mock-andmetega dev-serveri mälus. Andmed kaovad serveri taaskäivitamisel. Supabase'iga ühendatakse need #8, #9 ja #10 käigus.
 
 ## Ülesehitus
 
 - `src/lib/household.ts`: järjekorra loogika puhaste funktsioonidena
-- `src/lib/useHousehold.ts`: andmete lugemine ja salvestamine `localStorage`-is
+- `src/lib/actions.ts`: server actionid, ainus koht, kust frontend andmeid loeb ja muudab (leping, #7)
+- `src/lib/mock-store.ts`: mälus hoitav ajutine andmebaas, kuni Supabase on ühendatud
 - `src/components/`: vaated
 - `test/`: loogika testid, `test/db/`: andmebaasi testid üle API
 - `supabase/`: Supabase CLI seadistus, migratsioonid ja pgTAP testid (`supabase/tests/`)

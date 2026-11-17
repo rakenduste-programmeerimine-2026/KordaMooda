@@ -1,16 +1,17 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, startTransition, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
+import { createHousehold } from "@/lib/actions";
 import {
-  createHousehold,
+  cleanMemberNames,
+  type Household,
   HouseholdError,
   MAX_MEMBERS,
   MAX_NAME_LENGTH,
 } from "@/lib/household";
 import { snappy, soft } from "@/lib/motion";
-import { saveHousehold } from "@/lib/useHousehold";
 
 const rise = {
   hidden: { opacity: 0, y: 18 },
@@ -23,22 +24,35 @@ function placeholderFor(index: number): string {
   return "Veel üks nimi";
 }
 
-export function StartScreen() {
+type Props = {
+  onJoined: (household: Household) => void;
+};
+
+export function StartScreen({ onJoined }: Props) {
   const nextKey = useRef(2);
   const [people, setPeople] = useState([
     { key: 0, name: "" },
     { key: 1, name: "" },
   ]);
   const [error, setError] = useState("");
+  const [pending, startCreating] = useTransition();
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    if (pending) return;
+    const names = people.map((person) => person.name);
     try {
-      saveHousehold(createHousehold(people.map((person) => person.name)));
+      // Same rules as the server, checked here first so mistakes show instantly.
+      cleanMemberNames(names);
     } catch (caught) {
       if (!(caught instanceof HouseholdError)) throw caught;
       setError(caught.message);
+      return;
     }
+    startCreating(async () => {
+      const result = await createHousehold(names);
+      startTransition(() => (result.ok ? onJoined(result.data) : setError(result.error)));
+    });
   }
 
   return (
@@ -153,8 +167,12 @@ export function StartScreen() {
             )}
           </AnimatePresence>
 
-          <motion.button className="button button-primary start-submit" whileTap={{ scale: 0.97 }}>
-            Alusta
+          <motion.button
+            className="button button-primary start-submit"
+            aria-disabled={pending || undefined}
+            whileTap={{ scale: 0.97 }}
+          >
+            {pending ? "Hetk…" : "Alusta"}
           </motion.button>
         </motion.form>
       </motion.div>
