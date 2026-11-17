@@ -7,17 +7,21 @@ import { snappy } from "@/lib/motion";
 
 type Props = {
   canRemove: boolean;
+  onInvite: () => void;
   onRemoveChores: () => void;
   onLeave: () => void;
   onClose: () => void;
 };
 
-export function Menu({ canRemove, onRemoveChores, onLeave, onClose }: Props) {
+export function Menu({ canRemove, onInvite, onRemoveChores, onLeave, onClose }: Props) {
   const [confirming, setConfirming] = useState(false);
 
   return (
     <Sheet title="Valikud" closeLabel="Sulge" onClose={onClose}>
       <div className="menu">
+        <button type="button" className="menu-item" onClick={onInvite}>
+          Kutsu kaaslane
+        </button>
         {canRemove && (
           <button type="button" className="menu-item" onClick={onRemoveChores}>
             Eemalda töid

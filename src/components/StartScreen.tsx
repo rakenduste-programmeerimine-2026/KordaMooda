@@ -1,8 +1,9 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type FormEvent, startTransition, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
+import { JoinForm } from "@/components/JoinForm";
 import { createHousehold } from "@/lib/actions";
 import {
   cleanMemberNames,
@@ -24,11 +25,113 @@ function placeholderFor(index: number): string {
   return "Veel üks nimi";
 }
 
+const fade = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -6, transition: { duration: 0.12 } },
+  transition: snappy,
+};
+
+type Path = "create" | "join";
+
+const PATHS: { path: Path; label: string; title: string; lead: string }[] = [
+  {
+    path: "create",
+    label: "Loo uus kodu",
+    title: "Kes teil kodus töid jagab?",
+    lead: "Näed iga kodutöö juures kohe, kelle kord see on.",
+  },
+  {
+    path: "join",
+    label: "Mul on kutsekood",
+    title: "Liitu kaaslase koduga",
+    lead: "Kirjuta kood, mille kaaslane sulle saatis. Siis näete sama nimekirja.",
+  },
+];
+
 type Props = {
-  onJoined: (household: Household) => void;
+  /** `created` is true for a new household, so the app can offer to invite a partner. */
+  onJoined: (household: Household, created: boolean) => void;
 };
 
 export function StartScreen({ onJoined }: Props) {
+  const [path, setPath] = useState<Path>("create");
+  const current = PATHS.find((item) => item.path === path)!;
+  return (
+    <main className="start">
+      <div className="start-glow" aria-hidden>
+        <span />
+        <span />
+      </div>
+
+      <motion.div
+        className="start-content"
+        initial="hidden"
+        animate="show"
+        transition={{ staggerChildren: 0.07 }}
+      >
+        <motion.p className="wordmark" variants={rise}>
+          <span className="wordmark-mark" aria-hidden />
+          KordaMööda
+        </motion.p>
+
+        <motion.div variants={rise}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={path} {...fade}>
+              <h1>{current.title}</h1>
+              <p className="start-lead">{current.lead}</p>
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+
+        <motion.div
+          className="start-paths"
+          role="group"
+          aria-label="Kuidas alustad?"
+          variants={rise}
+        >
+          <LayoutGroup id="start-path">
+            {PATHS.map((item) => {
+              const chosen = item.path === path;
+              return (
+                <button
+                  key={item.path}
+                  type="button"
+                  className="start-path"
+                  aria-pressed={chosen}
+                  onClick={() => setPath(item.path)}
+                >
+                  {chosen && (
+                    <motion.span
+                      layoutId="start-path-pill"
+                      className="start-path-pill"
+                      transition={snappy}
+                    />
+                  )}
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </LayoutGroup>
+        </motion.div>
+
+        <motion.div variants={rise}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={path} {...fade}>
+              {path === "join" ? (
+                <JoinForm autoFocus onJoined={(household) => onJoined(household, false)} />
+              ) : (
+                <CreateForm onCreated={(household) => onJoined(household, true)} />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+      </motion.div>
+    </main>
+  );
+}
+
+function CreateForm({ onCreated }: { onCreated: (household: Household) => void }) {
   const nextKey = useRef(2);
   const [people, setPeople] = useState([
     { key: 0, name: "" },
@@ -51,131 +154,108 @@ export function StartScreen({ onJoined }: Props) {
     }
     startCreating(async () => {
       const result = await createHousehold(names);
-      startTransition(() => (result.ok ? onJoined(result.data) : setError(result.error)));
+      startTransition(() => (result.ok ? onCreated(result.data) : setError(result.error)));
     });
   }
 
   return (
-    <main className="start">
-      <div className="start-glow" aria-hidden>
-        <span />
-        <span />
-      </div>
-
-      <motion.div
-        className="start-content"
-        initial="hidden"
-        animate="show"
-        transition={{ staggerChildren: 0.07 }}
-      >
-        <motion.p className="wordmark" variants={rise}>
-          <span className="wordmark-mark" aria-hidden />
-          KordaMööda
-        </motion.p>
-        <motion.h1 variants={rise}>Kes teil kodus töid jagab?</motion.h1>
-        <motion.p className="start-lead" variants={rise}>
-          Näed iga kodutöö juures kohe, kelle kord see on.
-        </motion.p>
-
-        <motion.form variants={rise} onSubmit={submit} noValidate>
-          <ul className="people">
-            <AnimatePresence initial={false}>
-              {people.map((person, index) => (
-                <motion.li
-                  key={person.key}
-                  layout="position"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
+    <form onSubmit={submit} noValidate>
+      <ul className="people">
+        <AnimatePresence initial={false}>
+          {people.map((person, index) => (
+            <motion.li
+              key={person.key}
+              layout="position"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={snappy}
+            >
+              <div className="person">
+                <motion.span
+                  key={Array.from(person.name.trim())[0] ?? ""}
+                  initial={{ scale: 0.6 }}
+                  animate={{ scale: 1 }}
                   transition={snappy}
                 >
-                  <div className="person">
-                    <motion.span
-                      key={Array.from(person.name.trim())[0] ?? ""}
-                      initial={{ scale: 0.6 }}
-                      animate={{ scale: 1 }}
-                      transition={snappy}
-                    >
-                      <Avatar
-                        tone={index}
-                        size="medium"
-                        initials={Array.from(person.name.trim())[0]?.toLocaleUpperCase("et") ?? ""}
-                      />
-                    </motion.span>
-                    <input
-                      aria-label={placeholderFor(index)}
-                      placeholder={placeholderFor(index)}
-                      value={person.name}
-                      maxLength={MAX_NAME_LENGTH}
-                      autoComplete="off"
-                      autoCapitalize="words"
-                      // Only people added with the button mount after the page has loaded.
-                      autoFocus={index >= 2}
-                      onChange={(event) => {
-                        const name = event.target.value;
-                        setError("");
-                        setPeople((current) =>
-                          current.map((item) =>
-                            item.key === person.key ? { ...item, name } : item,
-                          ),
-                        );
-                      }}
-                    />
-                    {index >= 2 && (
-                      <button
-                        type="button"
-                        className="button button-quiet"
-                        aria-label={`Eemalda ${person.name || "see rida"}`}
-                        onClick={() =>
-                          setPeople((current) => current.filter((item) => item.key !== person.key))
-                        }
-                      >
-                        Eemalda
-                      </button>
-                    )}
-                  </div>
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </ul>
+                  <Avatar
+                    tone={index}
+                    size="medium"
+                    initials={Array.from(person.name.trim())[0]?.toLocaleUpperCase("et") ?? ""}
+                  />
+                </motion.span>
+                <input
+                  aria-label={placeholderFor(index)}
+                  placeholder={placeholderFor(index)}
+                  value={person.name}
+                  maxLength={MAX_NAME_LENGTH}
+                  autoComplete="off"
+                  autoCapitalize="words"
+                  // Only people added with the button mount after the page has loaded.
+                  autoFocus={index >= 2}
+                  onChange={(event) => {
+                    const name = event.target.value;
+                    setError("");
+                    setPeople((current) =>
+                      current.map((item) =>
+                        item.key === person.key ? { ...item, name } : item,
+                      ),
+                    );
+                  }}
+                />
+                {index >= 2 && (
+                  <button
+                    type="button"
+                    className="button button-quiet"
+                    aria-label={`Eemalda ${person.name || "see rida"}`}
+                    onClick={() =>
+                      setPeople((current) => current.filter((item) => item.key !== person.key))
+                    }
+                  >
+                    Eemalda
+                  </button>
+                )}
+              </div>
+            </motion.li>
+          ))}
+        </AnimatePresence>
+      </ul>
 
-          {people.length < MAX_MEMBERS && (
-            <button
-              type="button"
-              className="button button-quiet start-more"
-              onClick={() => {
-                const key = nextKey.current++;
-                setPeople((current) => [...current, { key, name: "" }]);
-              }}
-            >
-              Lisa veel üks inimene
-            </button>
-          )}
+      {people.length < MAX_MEMBERS && (
+        <button
+          type="button"
+          className="button button-quiet start-more"
+          onClick={() => {
+            const key = nextKey.current++;
+            setPeople((current) => [...current, { key, name: "" }]);
+          }}
+        >
+          Lisa veel üks inimene
+        </button>
+      )}
 
-          <AnimatePresence>
-            {error && (
-              <motion.p
-                className="form-error"
-                role="alert"
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, transition: { duration: 0.12 } }}
-                transition={snappy}
-              >
-                {error}
-              </motion.p>
-            )}
-          </AnimatePresence>
-
-          <motion.button
-            className="button button-primary start-submit"
-            aria-disabled={pending || undefined}
-            whileTap={{ scale: 0.97 }}
+      <AnimatePresence>
+        {error && (
+          <motion.p
+            className="form-error"
+            role="alert"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+            transition={snappy}
           >
-            {pending ? "Hetk…" : "Alusta"}
-          </motion.button>
-        </motion.form>
-      </motion.div>
-    </main>
+            {error}
+          </motion.p>
+        )}
+      </AnimatePresence>
+
+      <motion.button
+        className="button button-primary start-submit"
+        aria-disabled={pending || undefined}
+        whileTap={{ scale: 0.97 }}
+      >
+        {pending ? "Hetk…" : "Alusta"}
+      </motion.button>
+    </form>
   );
 }

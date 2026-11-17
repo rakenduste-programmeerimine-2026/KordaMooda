@@ -13,6 +13,7 @@ type Props = {
 
 export function App({ initial }: Props) {
   const [household, setHousehold] = useState(initial);
+  const [created, setCreated] = useState(false);
 
   // The server renders the page again when this device joins or leaves a household
   // (the session cookie changes). Its copy is then the newest one.
@@ -33,9 +34,14 @@ export function App({ initial }: Props) {
           transition={{ duration: 0.2 }}
         >
           {household ? (
-            <Home household={household} onChange={setHousehold} />
+            <Home household={household} onChange={setHousehold} welcome={created} />
           ) : (
-            <StartScreen onJoined={setHousehold} />
+            <StartScreen
+              onJoined={(joined, isNew) => {
+                setCreated(isNew);
+                setHousehold(joined);
+              }}
+            />
           )}
         </motion.div>
       </AnimatePresence>
