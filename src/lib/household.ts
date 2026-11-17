@@ -65,6 +65,23 @@ export function normalizeInviteCode(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
+/** The link a partner opens to join. */
+export function invitePath(code: string): string {
+  return `/liitu/${code}`;
+}
+
+/** Reads a code from what was typed or pasted into the code field, even a whole invite link. */
+export function inviteCodeFromInput(raw: string): string {
+  const afterLink = raw.split("/liitu/").at(-1) ?? "";
+  const code = raw.includes("/liitu/") ? afterLink.split(/[?#/]/)[0] : raw;
+  return normalizeInviteCode(code).slice(0, INVITE_CODE_LENGTH);
+}
+
+/** "ABCD2345" → "ABCD 2345", easier to read out loud. */
+export function formatInviteCode(code: string): string {
+  return code.replace(/(.{4})(?=.)/g, "$1 ");
+}
+
 /** Validates and tidies people's names. Throws HouseholdError. */
 export function cleanMemberNames(rawNames: string[]): string[] {
   const names = rawNames.map(cleanText).filter(Boolean);
@@ -135,6 +152,23 @@ export function markDone(household: Household, choreId: Id, doneAt: string): Hou
         : chore,
     ),
   };
+}
+
+/**
+ * Chores whose card looks different in `after`: the turn moved, it was undone, or it is new.
+ * Used to point out what another phone changed.
+ */
+export function changedChores(before: Household, after: Household): Id[] {
+  return after.chores
+    .filter((chore) => {
+      const old = before.chores.find((c) => c.id === chore.id);
+      return (
+        !old ||
+        old.currentMemberId !== chore.currentMemberId ||
+        old.last?.doneAt !== chore.last?.doneAt
+      );
+    })
+    .map((chore) => chore.id);
 }
 
 export function removeChore(household: Household, choreId: Id): Household {

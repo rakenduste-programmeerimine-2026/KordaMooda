@@ -28,6 +28,10 @@ type Props = {
   members: Member[];
   now: string;
   editing: boolean;
+  /** No network: the card shows the last known turn, but can't be changed. */
+  disabled?: boolean;
+  /** Changes when another phone changed this chore, so the card lights up briefly. */
+  flashKey?: number;
   onDone: () => void;
   onRemove: () => void;
   ref?: Ref<HTMLLIElement>;
@@ -48,7 +52,17 @@ function CheckIcon() {
   );
 }
 
-export function ChoreCard({ chore, members, now, editing, onDone, onRemove, ref }: Props) {
+export function ChoreCard({
+  chore,
+  members,
+  now,
+  editing,
+  disabled = false,
+  flashKey,
+  onDone,
+  onRemove,
+  ref,
+}: Props) {
   const [pulse, setPulse] = useState(0);
   const x = useMotionValue(0);
   const revealOpacity = useTransform(x, [0, SWIPE_DISTANCE * 0.7], [0, 1]);
@@ -89,13 +103,23 @@ export function ChoreCard({ chore, members, now, editing, onDone, onRemove, ref 
       <motion.article
         className="card"
         style={{ x }}
-        drag={editing ? false : "x"}
+        drag={editing || disabled ? false : "x"}
         dragDirectionLock
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={{ left: 0, right: 0.7 }}
         dragTransition={{ bounceStiffness: 500, bounceDamping: 32 }}
         onDragEnd={handleDragEnd}
       >
+        {flashKey !== undefined && (
+          <motion.span
+            key={flashKey}
+            className="card-flash"
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 0] }}
+            transition={{ duration: 1.8, times: [0, 0.15, 1], ease: "easeOut" }}
+          />
+        )}
         <div className="card-top">
           <h2 className="card-chore">{chore.name}</h2>
           <div className="swap card-last">
@@ -159,6 +183,7 @@ export function ChoreCard({ chore, members, now, editing, onDone, onRemove, ref 
               type="button"
               className="button button-danger"
               aria-label={`Eemalda ${chore.name}`}
+              disabled={disabled}
               initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               whileTap={{ scale: 0.94 }}
@@ -172,6 +197,7 @@ export function ChoreCard({ chore, members, now, editing, onDone, onRemove, ref 
               type="button"
               className="button button-done"
               aria-label={`${chore.name} tehtud`}
+              disabled={disabled}
               initial={false}
               whileTap={{ scale: 0.92 }}
               transition={snappy}

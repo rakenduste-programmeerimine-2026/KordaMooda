@@ -117,13 +117,16 @@ Täpsemad tiimi reeglid on failis [AGENTS.md](AGENTS.md).
 
 ## Teadaolev piirang
 
-Frontend kasutab server actioneid (`src/lib/actions.ts`), aga need töötavad veel mock-andmetega dev-serveri mälus. Andmed kaovad serveri taaskäivitamisel. Supabase'iga ühendatakse need #8, #9 ja #10 käigus.
+Kontosid pole: kui brauser kustutab küpsised, tuleb kutsekoodiga uuesti liituda (vt "Sisselogimine").
+
+Ilma `.env.local`-ita töötavad server actionid mälus hoitava mockiga (`src/lib/mock-store.ts`). Andmed kaovad siis serveri taaskäivitamisel. Supabase'iga töötab kõik, kui `.env.local` on täidetud.
 
 ## Ülesehitus
 
 - `src/lib/household.ts`: järjekorra loogika puhaste funktsioonidena
 - `src/lib/actions.ts`: server actionid, ainus koht, kust frontend andmeid loeb ja muudab (leping, #7)
-- `src/lib/mock-store.ts`: mälus hoitav ajutine andmebaas, kuni Supabase on ühendatud
+- `src/lib/mock-store.ts`: mälus hoitav andmebaas, kui Supabase pole seadistatud
+- `src/lib/supabase/`: Supabase'i kliendid, sessioon (`session.ts`), kodud (`households.ts`) ja tööd (`chores.ts`)
 - `src/components/`: vaated
 - `test/`: loogika testid, `test/db/`: andmebaasi testid üle API
 - `supabase/`: Supabase CLI seadistus, migratsioonid ja pgTAP testid (`supabase/tests/`)

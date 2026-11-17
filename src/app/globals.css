@@ -221,6 +221,14 @@ input {
   color: var(--ink);
 }
 
+/* filter, not opacity: motion sets opacity inline on animated buttons. */
+.button:disabled,
+.fab:disabled,
+.menu-item:disabled {
+  filter: opacity(0.4);
+  cursor: not-allowed;
+}
+
 @media (hover: hover) {
   .button-quiet:hover,
   .button-chip:hover {
@@ -237,7 +245,8 @@ input {
   align-items: center;
   min-height: 100dvh;
   padding: 2rem 1.25rem;
-  overflow: hidden;
+  /* clip, not hidden: a hidden box can still be scrolled, e.g. by autofocus on the code field. */
+  overflow: clip;
 }
 
 .start-glow {
@@ -352,6 +361,76 @@ input {
   font-weight: 600;
 }
 
+.start-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--quiet);
+}
+
+.start-path {
+  position: relative;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.start-path[aria-pressed="true"] {
+  color: var(--ink);
+}
+
+.start-path > span:last-child {
+  position: relative;
+}
+
+.start-path-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface);
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+.code-input {
+  min-height: 3.75rem;
+  background: var(--surface);
+  font-size: 1.625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
+.code-input::placeholder {
+  color: var(--line);
+}
+
+.join-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.join-actions .button,
+.join-other .button {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.join-other {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
 /* Avatars */
 
 .avatar {
@@ -379,6 +458,8 @@ input {
 
 .home {
   padding-bottom: 7rem;
+  /* The "Tehtud" pulse grows past the screen edge; without this a phone zooms the page out. */
+  overflow-x: clip;
 }
 
 .topbar {
@@ -395,12 +476,36 @@ input {
   -webkit-backdrop-filter: blur(16px) saturate(1.5);
 }
 
+.notice-slot {
+  overflow: hidden;
+}
+
 .notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  max-width: calc(72rem - 2 * var(--gutter));
   margin: 0 var(--gutter) 0.75rem;
   padding: 0.75rem 1rem;
   border-radius: 1rem;
   background: var(--ink);
   color: var(--bg);
+  font-weight: 550;
+}
+
+@media (min-width: 75rem) {
+  .notice {
+    margin-inline: auto;
+  }
+}
+
+.notice svg {
+  flex: none;
+  margin-top: 0.0625rem;
+}
+
+.start .notice {
+  margin: 1.5rem 0 0;
 }
 
 .empty {
@@ -467,6 +572,16 @@ input {
     background-color 0.5s ease,
     box-shadow 0.5s ease;
   touch-action: pan-y;
+}
+
+/* Another phone changed this chore. */
+.card-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  box-shadow: inset 0 0 0 3px var(--c);
+  pointer-events: none;
 }
 
 .card-top {
@@ -622,6 +737,24 @@ input {
   font-size: 0.9375rem;
   box-shadow: 0 16px 36px -12px var(--shadow-color);
   pointer-events: auto;
+}
+
+.toast-icon {
+  flex: none;
+  margin-right: -0.25rem;
+}
+
+.toast-icon + span {
+  flex: 1;
+}
+
+/* The toast is dark on light screens and light on dark ones, so the colours swap too. */
+.toast-icon[data-tone="error"] { color: #ff8a94; }
+.toast-icon[data-tone="conflict"] { color: #8db4ff; }
+
+@media (prefers-color-scheme: dark) {
+  .toast-icon[data-tone="error"] { color: #c92a3d; }
+  .toast-icon[data-tone="conflict"] { color: #2563eb; }
 }
 
 .toast-timer {
@@ -822,6 +955,137 @@ input {
   gap: 0.5rem;
 }
 
+.invite {
+  display: grid;
+  gap: 1.125rem;
+}
+
+.invite-lead {
+  color: var(--muted);
+}
+
+.invite-code {
+  padding: 1rem 1.125rem;
+  border-radius: 1.25rem;
+  background: var(--quiet);
+  text-align: center;
+}
+
+.invite-code-value {
+  font-size: 2.25rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+}
+
+.invite-link {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.invite-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.invite-status {
+  min-height: 1.45em;
+  margin-top: -0.5rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Add to home screen */
+
+.install-hint {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem 0.875rem;
+  max-width: calc(72rem - 2 * var(--gutter));
+  margin: 0 var(--gutter) 0.75rem;
+  padding: 1rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+@media (min-width: 75rem) {
+  .install-hint {
+    margin-inline: auto;
+  }
+}
+
+/* Same picture as src/app/icon.svg. */
+.install-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, #1f45d8 50%, #ffc91f 50%);
+}
+
+.install-text p {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.install-text .install-title {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.install-share {
+  vertical-align: -0.2em;
+}
+
+.install-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Loading */
+
+.skeleton-card {
+  --c: var(--ink);
+  gap: 0.75rem;
+  min-height: 11rem;
+  background: var(--surface);
+}
+
+.skeleton {
+  display: block;
+  border-radius: 0.5rem;
+  background: var(--quiet);
+  animation: shimmer 1.4s ease-in-out infinite alternate;
+}
+
+.skeleton-title {
+  width: 35%;
+  height: 1.125rem;
+}
+
+.skeleton-name {
+  width: 55%;
+  height: 2.75rem;
+}
+
+.skeleton-row {
+  width: 100%;
+  height: 3rem;
+  margin-top: auto;
+  border-radius: 999px;
+}
+
+@keyframes shimmer {
+  to {
+    opacity: 0.45;
+  }
+}
+
 @media (min-width: 40rem) {
   :root {
     --gutter: 1.5rem;
@@ -830,7 +1094,8 @@ input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .start-glow span {
+  .start-glow span,
+  .skeleton {
     animation: none;
   }
 
