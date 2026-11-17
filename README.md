@@ -94,6 +94,23 @@ Rakendus on Vercelis projektina `kordamooda` (Maiko konto). Production-aadress o
 - `.vercelignore` jätab `.env*` failid välja, nii et kohalikud saladused Vercelisse ei satu.
 - Supabase'i Authis pole lubatud URL-e vaja seadistada, sest anonüümne sisselogimine ei kasuta e-posti ega OAuthi suunamisi. Kui need kunagi lisanduvad, tuleb Verceli domeen lisada Supabase'is: Authentication → URL Configuration.
 
+## Töövoog
+
+1. Võta värske `main` ja tee issue jaoks haru:
+   ```bash
+   git checkout main && git pull
+   git checkout -b 16-ci   # <issue nr>-<lühike nimi>
+   ```
+2. Commiti väikeste tükkidena, sõnum eesti keeles ja viitega issuele (`Refs #16`). Enne pushi käivita `npm test`, `npm run lint` ja `npm run build`.
+3. Ava PR `main`-i vastu. Kirjelduses `Closes #<nr>`, siis sulgub issue mergimisel ise.
+4. **CI** (`.github/workflows/ci.yml`) käivitub igal PR-il ja `main`-i pushil:
+   - *Lint, testid ja build*: `npm ci`, `npm run lint`, `npm test`, `npm run build`
+   - *Andmebaasi testid*: käivitab Dockeris lokaalse Supabase'i kõigi migratsioonidega, siis `npm run test:db` (pgTAP) ja `npm run test:db:api`
+5. **Ülevaatus**: teine tiimiliige vaatab PR-i üle ja kiidab heaks.
+6. **Merge**: `main` on kaitstud. PR-i saab mergida alles siis, kui mõlemad CI tööd on rohelised ja üks tiimiliige on heaks kiitnud. Otse `main`-i pushida ei saa.
+
+Täpsemad tiimi reeglid on failis [AGENTS.md](AGENTS.md).
+
 ## Teadaolev piirang
 
 Rakendus kasutab veel brauseri `localStorage`-it. Andmebaasi skeem on olemas, aga frontend pole sellega veel ühendatud (#5, #11).
