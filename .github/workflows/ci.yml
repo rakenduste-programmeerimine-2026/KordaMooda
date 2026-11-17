@@ -44,11 +44,12 @@ jobs:
       - run: npm ci
 
       # Lokaalne Supabase Dockeris koos kõigi migratsioonidega.
-      # Testid vajavad ainult andmebaasi, auth'i (anonüümne sisselogimine) ja REST API-t.
+      # Testid vajavad andmebaasi, auth'i (anonüümne sisselogimine), REST API-t ja
+      # Realtime'i (test/db/realtime.test.ts, #13).
       - name: Käivita Supabase
         run: >-
           npx supabase start
-          -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+          -x storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
 
       - name: pgTAP testid (RLS, mark_done, undo_done)
         run: npm run test:db

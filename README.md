@@ -52,6 +52,10 @@ Koodis kasuta Supabase'i ainult nende failide kaudu:
 - `src/lib/supabase/client.ts`: brauseris, ainult realtime'i jaoks (#13).
 - `src/proxy.ts`: värskendab igal päringul sessiooni. Ilma `.env.local`-ita jäetakse see vahele ja rakendus töötab mockiga.
 
+### Reaalajas uuendused
+
+Kui üks telefon muudab kodu, näeb teine seda ilma värskendamata (`src/lib/useHouseholdRealtime.ts`). Telefon jälgib Supabase Realtime'iga ainult oma kodu rida. Iga töö või liikme muutus uuendab väljal `households.changed_at`, ja selle peale laeb telefon kodu serverist uuesti. Sündmuses endas tööde andmeid pole, seega kehtib alati RLS. Põhjused on kirjas migratsioonis `20261117220000_realtime.sql`.
+
 ### Sisselogimine (kontosid pole)
 
 Kodu loomisel või sellega liitumisel saab seade **anonüümse Supabase'i kasutaja**. Tabel `household_users` seob selle kasutaja koduga. Lihtsalt rakenduse avamine kedagi ei loo, seega robotid ja külastajad ei täida `auth.users` tabelit.

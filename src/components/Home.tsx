@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { startTransition, useEffect, useOptimistic, useRef, useState } from "react";
 import { AddChore } from "@/components/AddChore";
 import { ChoreCard } from "@/components/ChoreCard";
+import { InstallHint } from "@/components/InstallHint";
 import { Invite } from "@/components/Invite";
 import { Menu } from "@/components/Menu";
 import { OfflineNotice } from "@/components/OfflineNotice";
@@ -240,6 +241,9 @@ export function Home({ household: saved, onChange, welcome = false, remote = nul
       <OfflineNotice>
         Ühendus puudub. Näed viimast teadaolevat seisu. Muuta saad, kui internet on tagasi.
       </OfflineNotice>
+
+      {/* After the first chore, so it doesn't get in the way of adding one. */}
+      {chores.length > 0 && !editing && sheet === null && <InstallHint />}
 
       {chores.length === 0 ? (
         <motion.section
