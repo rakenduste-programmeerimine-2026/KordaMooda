@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { JoinForm } from "@/components/JoinForm";
+import { OfflineNotice } from "@/components/OfflineNotice";
 import { joinHousehold } from "@/lib/actions";
+import { callAction, useOnline } from "@/lib/connection";
 import { soft } from "@/lib/motion";
 
 type Props = {
@@ -22,7 +24,7 @@ type Router = ReturnType<typeof useRouter>;
 
 function requestJoin(code: string, router: Router, setState: (state: State) => void) {
   startTransition(async () => {
-    const result = await joinHousehold(code);
+    const result = await callAction(() => joinHousehold(code));
     startTransition(() => {
       if (result.ok) router.replace("/");
       else setState({ kind: "failed", error: result.error });
@@ -36,6 +38,7 @@ export function JoinLink({ code, currentMembers }: Props) {
     currentMembers ? { kind: "confirm" } : { kind: "joining" },
   );
   const started = useRef(false);
+  const online = useOnline();
 
   function join() {
     setState({ kind: "joining" });
@@ -69,6 +72,8 @@ export function JoinLink({ code, currentMembers }: Props) {
             KordaMööda
           </p>
 
+          <OfflineNotice>Ühendus puudub. Liitumiseks on vaja internetti.</OfflineNotice>
+
           {state.kind === "joining" && (
             <div role="status">
               <h1>Liitun koduga…</h1>
@@ -87,6 +92,7 @@ export function JoinLink({ code, currentMembers }: Props) {
                 <motion.button
                   type="button"
                   className="button button-primary"
+                  disabled={!online}
                   whileTap={{ scale: 0.97 }}
                   onClick={join}
                 >

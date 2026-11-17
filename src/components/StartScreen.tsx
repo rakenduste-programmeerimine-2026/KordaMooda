@@ -4,7 +4,9 @@ import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { type FormEvent, startTransition, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
 import { JoinForm } from "@/components/JoinForm";
+import { OfflineNotice } from "@/components/OfflineNotice";
 import { createHousehold } from "@/lib/actions";
+import { callAction, useOnline } from "@/lib/connection";
 import {
   cleanMemberNames,
   type Household,
@@ -75,6 +77,10 @@ export function StartScreen({ onJoined }: Props) {
           KordaMööda
         </motion.p>
 
+        <OfflineNotice>
+          Ühendus puudub. Kodu loomiseks või liitumiseks on vaja internetti.
+        </OfflineNotice>
+
         <motion.div variants={rise}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={path} {...fade}>
@@ -139,6 +145,7 @@ function CreateForm({ onCreated }: { onCreated: (household: Household) => void }
   ]);
   const [error, setError] = useState("");
   const [pending, startCreating] = useTransition();
+  const online = useOnline();
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -153,7 +160,7 @@ function CreateForm({ onCreated }: { onCreated: (household: Household) => void }
       return;
     }
     startCreating(async () => {
-      const result = await createHousehold(names);
+      const result = await callAction(() => createHousehold(names));
       startTransition(() => (result.ok ? onCreated(result.data) : setError(result.error)));
     });
   }
@@ -252,6 +259,7 @@ function CreateForm({ onCreated }: { onCreated: (household: Household) => void }
       <motion.button
         className="button button-primary start-submit"
         aria-disabled={pending || undefined}
+        disabled={!online}
         whileTap={{ scale: 0.97 }}
       >
         {pending ? "Hetk…" : "Alusta"}

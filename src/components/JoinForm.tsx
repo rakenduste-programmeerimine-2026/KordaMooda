@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { type FormEvent, startTransition, useState, useTransition } from "react";
 import { joinHousehold } from "@/lib/actions";
+import { callAction, useOnline } from "@/lib/connection";
 import { type Household, INVITE_CODE_LENGTH, inviteCodeFromInput } from "@/lib/household";
 import { snappy } from "@/lib/motion";
 
@@ -17,6 +18,7 @@ export function JoinForm({ initialCode = "", initialError = "", autoFocus, onJoi
   const [code, setCode] = useState(initialCode);
   const [error, setError] = useState(initialError);
   const [pending, startJoining] = useTransition();
+  const online = useOnline();
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -26,7 +28,7 @@ export function JoinForm({ initialCode = "", initialError = "", autoFocus, onJoi
       return;
     }
     startJoining(async () => {
-      const result = await joinHousehold(code);
+      const result = await callAction(() => joinHousehold(code));
       startTransition(() => (result.ok ? onJoined(result.data) : setError(result.error)));
     });
   }
@@ -74,6 +76,7 @@ export function JoinForm({ initialCode = "", initialError = "", autoFocus, onJoi
       <motion.button
         className="button button-primary start-submit"
         aria-disabled={pending || undefined}
+        disabled={!online}
         whileTap={{ scale: 0.97 }}
       >
         {pending ? "Liitun…" : "Liitu"}

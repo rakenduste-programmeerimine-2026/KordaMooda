@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { startTransition, useRef, useState, useTransition } from "react";
 import { Sheet } from "@/components/Sheet";
 import { newInviteCode } from "@/lib/actions";
+import { callAction, useOnline } from "@/lib/connection";
 import { formatInviteCode, invitePath } from "@/lib/household";
 import { snappy } from "@/lib/motion";
 
@@ -29,6 +30,7 @@ export function Invite({ code, welcome, onNewCode, onClose }: Props) {
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [pending, startRenewing] = useTransition();
+  const online = useOnline();
   const linkRef = useRef<HTMLInputElement>(null);
   const statusTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -66,7 +68,7 @@ export function Invite({ code, welcome, onNewCode, onClose }: Props) {
   function renew() {
     setError("");
     startRenewing(async () => {
-      const result = await newInviteCode();
+      const result = await callAction(newInviteCode);
       startTransition(() => {
         if (!result.ok) {
           setError(result.error);
@@ -156,12 +158,15 @@ export function Invite({ code, welcome, onNewCode, onClose }: Props) {
               exit={{ opacity: 0 }}
               transition={snappy}
             >
-              <p>Vana kood ja link lakkavad töötamast. Kes on juba liitunud, jääb koju edasi.</p>
+              <p>
+                Vana kood ja link lakkavad töötamast. Kes on juba liitunud, jääb koju edasi.
+              </p>
               <div className="menu-confirm-actions">
                 <button
                   type="button"
                   className="button button-danger"
                   aria-disabled={pending || undefined}
+                  disabled={!online}
                   onClick={() => !pending && renew()}
                 >
                   {pending ? "Hetk…" : "Tee uus kood"}
