@@ -9,7 +9,7 @@ create function pg_temp.login(user_id uuid) returns void language sql as $$
     json_build_object('sub', user_id, 'role', 'authenticated')::text, true);
 $$;
 
-select plan(30);
+select plan(32);
 
 -- Andmed: kaks kodu (A ja B), kummaski kaks liiget ja üks töö.
 -- Kasutaja ua on kodus A, kasutaja ub kodus B.
@@ -67,7 +67,10 @@ select throws_ok(
     values ('bbbbbbbb-0000-4000-8000-0000000000b0', 'Pesu', 'bbbbbbbb-0000-4000-8000-0000000000b1')$$,
   '42501', null, 'ei saa võõrasse koju tööd lisada');
 update public.chores set name = 'Häkitud' where id = 'bbbbbbbb-0000-4000-8000-0000000000c1';
-delete from public.chores where id = 'bbbbbbbb-0000-4000-8000-0000000000c1';
+select throws_ok($$delete from public.chores where id = 'bbbbbbbb-0000-4000-8000-0000000000c1'$$,
+  '42501', null, 'otse kustutada ei saa (ainult remove_chore, #10)');
+select throws_ok($$select public.remove_chore('bbbbbbbb-0000-4000-8000-0000000000c1')$$,
+  'P0002', 'Seda tööd pole olemas.', 'võõra kodu tööd ei saa eemaldada');
 select throws_ok(
   $$update public.chores set household_id = 'bbbbbbbb-0000-4000-8000-0000000000b0'
     where id = 'aaaaaaaa-0000-4000-8000-0000000000c1'$$,
@@ -105,7 +108,8 @@ select throws_ok(
 select lives_ok(
   $$update public.chores set name = 'Prügi välja' where id = 'aaaaaaaa-0000-4000-8000-0000000000c1'$$,
   'saab oma töö nime muuta');
-select lives_ok($$delete from public.chores where name = 'Pesu'$$, 'saab oma kodust töö eemaldada');
+select lives_ok($$select public.remove_chore((select id from public.chores where name = 'Pesu'))$$,
+  'saab oma kodust töö eemaldada (pehme kustutamine, #10)');
 select results_eq('select name from public.chores', $$values ('Prügi välja')$$, 'oma kodu muudatused jäid alles');
 
 -- Koduga lahkumine

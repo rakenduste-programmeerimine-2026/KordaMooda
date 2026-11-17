@@ -3,9 +3,9 @@
 /**
  * API contract between frontend and backend (#7).
  *
- * The frontend only ever imports from this file. Right now every action runs against an
- * in-memory mock (`mock-store.ts`), so the UI can be built before Supabase is ready.
- * The backend (#8, #9, #10) swaps the insides for Supabase without changing these signatures.
+ * The frontend only ever imports from this file. Every action runs against Supabase when
+ * it is configured, and otherwise against an in-memory mock (`mock-store.ts`), so the UI
+ * can still be built without database keys.
  *
  * Rules every action follows:
  * - Returns `Result<T>`; never throws for problems the user can fix.
@@ -30,16 +30,17 @@ import {
   type MockStore,
 } from "./mock-store.ts";
 import type { Result } from "./result.ts";
-import { createClient } from "./supabase/server.ts";
+import * as chores from "./supabase/chores.ts";
+import { hasSupabaseEnv } from "./supabase/env.ts";
 import * as households from "./supabase/households.ts";
+import { createClient } from "./supabase/server.ts";
 import * as session from "./supabase/session.ts";
 
 /**
- * "mock" (default) or "supabase". Stays on the mock until every action has a
- * Supabase version (#8, #9, #10), so the app never runs half on each.
- * Set KORDAMOODA_BACKEND=supabase in .env.local to try the finished parts.
+ * Supabase whenever .env.local has its settings, otherwise the mock.
+ * KORDAMOODA_BACKEND=mock forces the mock even with the settings present.
  */
-const USE_SUPABASE = process.env.KORDAMOODA_BACKEND === "supabase";
+const USE_SUPABASE = hasSupabaseEnv() && process.env.KORDAMOODA_BACKEND !== "mock";
 
 // ---------------------------------------------------------------------------
 // Mock plumbing. Everything in this section goes away when Supabase is wired in.
@@ -96,9 +97,15 @@ async function run<T>(work: (householdId: Id) => T | Promise<T>, needsHousehold 
 async function runSupabase<T>(
   work: (supabase: Awaited<ReturnType<typeof createClient>>) => Promise<T>,
 ): Promise<Result<T>> {
+  const supabase = await createClient();
   try {
-    return { ok: true, data: await work(await createClient()) };
+    return { ok: true, data: await work(supabase) };
   } catch (caught) {
+    if (caught instanceof ConflictError) {
+      // Someone else was first: send the household as it is now, so the UI can show it.
+      const latest = await session.getCurrentHousehold(supabase).catch(() => null);
+      return { ok: false, error: caught.message, ...(latest && { latest }) };
+    }
     if (caught instanceof HouseholdError) return { ok: false, error: caught.message };
     console.error("Supabase'i action ebaõnnestus:", caught);
     return { ok: false, error: "Midagi läks valesti. Proovi uuesti." };
@@ -157,16 +164,19 @@ export async function newInviteCode(): Promise<Result<string>> {
 
 /** Adds a chore whose queue starts with `firstMemberId`. */
 export async function addChore(name: string, firstMemberId: Id): Promise<Result<Household>> {
+  if (USE_SUPABASE) return runSupabase((supabase) => chores.addChore(supabase, name, firstMemberId));
   return run((householdId) => mockAddChore(store, householdId, name, firstMemberId));
 }
 
 /** Removes a chore. Can be undone with `undoRemoveChore`. */
 export async function removeChore(choreId: Id): Promise<Result<Household>> {
+  if (USE_SUPABASE) return runSupabase((supabase) => chores.removeChore(supabase, choreId));
   return run((householdId) => mockRemoveChore(store, householdId, choreId));
 }
 
 /** Puts a removed chore back where it was, with its queue intact. */
 export async function undoRemoveChore(choreId: Id): Promise<Result<Household>> {
+  if (USE_SUPABASE) return runSupabase((supabase) => chores.undoRemoveChore(supabase, choreId));
   return run((householdId) => mockUndoRemove(store, householdId, choreId));
 }
 
@@ -178,6 +188,9 @@ export async function undoRemoveChore(choreId: Id): Promise<Result<Household>> {
  * instead of skipping a person.
  */
 export async function markDone(choreId: Id, expectedMemberId: Id): Promise<Result<Household>> {
+  if (USE_SUPABASE) {
+    return runSupabase((supabase) => chores.markDone(supabase, choreId, expectedMemberId));
+  }
   return run((householdId) =>
     mockMarkDone(store, householdId, choreId, expectedMemberId, new Date().toISOString()),
   );
@@ -185,5 +198,6 @@ export async function markDone(choreId: Id, expectedMemberId: Id): Promise<Resul
 
 /** Undoes the last "Tehtud" on a chore, unless someone has changed that chore since. */
 export async function undoDone(choreId: Id): Promise<Result<Household>> {
+  if (USE_SUPABASE) return runSupabase((supabase) => chores.undoDone(supabase, choreId));
   return run((householdId) => mockUndoDone(store, householdId, choreId));
 }
