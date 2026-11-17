@@ -1,8 +1,13 @@
 -- Turvaülevaatuse parandused (#19).
 --
--- 1. Mahajäetud kodud kustutatakse: kui kodust lahkub viimane seade (ise lahkudes,
---    uut kodu luues või teise koduga liitudes), kustutatakse kodu koos liikmete ja
---    töödega. Sinna ei pääseks enam keegi ligi ja andmed jääksid muidu igaveseks.
+-- 1. Mahajäetud kodud kustutatakse 30 päeva pärast. Kui kodust lahkub viimane seade
+--    (ise lahkudes, uut kodu luues või teise koduga liitudes), saab kodu ajatempli
+--    abandoned_at. Seni saab kutsekoodiga tagasi liituda ja midagi ei kao (ka siis,
+--    kui küpsised kustusid kogemata). Üle 30 päeva mahajäetud kodud kustutatakse koos
+--    liikmete ja töödega, kui keegi järgmine kord kodu loob või liitub. Ajastajat
+--    (pg_cron) pole vaja. Kodud, kus pole ühtegi seadet, aga abandoned_at puudub
+--    (kaks viimast lahkusid täpselt korraga), loetakse created_at järgi.
+--    PR #44 ülevaatus: kohe kustutamine kaotaks ühe telefoniga kodu andmed hoiatuseta.
 -- 2. Kodude loomise piirang: 10 kodu tunnis kasutaja kohta (viga KM429), et skript
 --    ei saaks andmebaasi lõputult täita.
 -- 3. undo_done ainult 5 minuti jooksul. UI näitab "Võta tagasi" 8 sekundit, aga otse
@@ -11,7 +16,13 @@
 --    Security Advisor hoiatas, et anon ja authenticated saavad seda kutsuda.
 
 -- 1. Mahajäetud kodud
-create function private.delete_abandoned_household()
+alter table public.households add column abandoned_at timestamptz;
+
+create index households_abandoned_idx
+  on public.households (abandoned_at)
+  where abandoned_at is not null;
+
+create function private.mark_abandoned_household()
 returns trigger
 language plpgsql
 security definer
@@ -19,17 +30,75 @@ set search_path = ''
 as $$
 begin
   if not exists (select 1 from public.household_users where household_id = old.household_id) then
-    delete from public.households where id = old.household_id;
+    update public.households set abandoned_at = now() where id = old.household_id;
   end if;
   return null;
 end;
 $$;
 
-revoke all on function private.delete_abandoned_household() from public;
+revoke all on function private.mark_abandoned_household() from public;
 
-create trigger household_users_delete_abandoned
+create trigger household_users_mark_abandoned
   after delete on public.household_users
-  for each row execute function private.delete_abandoned_household();
+  for each row execute function private.mark_abandoned_household();
+
+create function private.delete_abandoned_households()
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  delete from public.households h
+  where coalesce(h.abandoned_at, h.created_at) < now() - interval '30 days'
+    and not exists (select 1 from public.household_users hu where hu.household_id = h.id);
+$$;
+
+revoke all on function private.delete_abandoned_households() from public;
+
+-- Nagu 20261117200000_join_household.sql, lisaks koristus ja abandoned_at tühjendamine.
+create or replace function public.join_household(code text)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  caller uuid := (select auth.uid());
+  normalized text := upper(regexp_replace(coalesce(code, ''), '[^A-Za-z0-9]', '', 'g'));
+  target uuid;
+begin
+  if caller is null then
+    raise exception 'Pole sisse logitud.' using errcode = '28000';
+  end if;
+
+  -- Vanad katsed ja mahajäetud kodud ei loe, koristame need samas ära.
+  delete from private.join_attempts where attempted_at < now() - interval '1 day';
+  perform private.delete_abandoned_households();
+
+  if (
+    select count(*) from private.join_attempts
+    where user_id = caller and attempted_at > now() - interval '1 hour'
+  ) >= 10 then
+    raise exception 'Liiga palju valesid koode.' using errcode = 'KM429';
+  end if;
+
+  select h.id into target from public.households h where h.invite_code = normalized;
+
+  if target is null then
+    insert into private.join_attempts (user_id) values (caller);
+    return null;
+  end if;
+
+  delete from public.household_users where user_id = caller and household_id <> target;
+  insert into public.household_users (user_id, household_id)
+  values (caller, target)
+  on conflict do nothing;
+  -- Keegi on jälle kodus: kodu pole enam mahajäetud.
+  update public.households set abandoned_at = null where id = target and abandoned_at is not null;
+
+  return target;
+end;
+$$;
 
 -- 2. Kodude loomise piirang
 create table private.household_creations (
@@ -43,7 +112,7 @@ create index household_creations_user_time_idx
 alter table private.household_creations enable row level security;
 revoke all on private.household_creations from public, anon, authenticated;
 
--- Nagu 20261117190000_create_household.sql, lisaks piirang.
+-- Nagu 20261117190000_create_household.sql, lisaks piirang ja mahajäetud kodude koristus.
 create or replace function public.create_household(member_names text[])
 returns uuid
 language plpgsql
@@ -59,6 +128,7 @@ begin
   end if;
 
   delete from private.household_creations where created_at < now() - interval '1 day';
+  perform private.delete_abandoned_households();
   if (
     select count(*) from private.household_creations
     where user_id = caller and created_at > now() - interval '1 hour'

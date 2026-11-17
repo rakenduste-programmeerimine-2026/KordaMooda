@@ -7,7 +7,7 @@ create function pg_temp.login(user_id uuid) returns void language sql as $$
     json_build_object('sub', user_id, 'role', 'authenticated')::text, true);
 $$;
 
-select plan(12);
+select plan(15);
 
 insert into auth.users (id, aud, role) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'authenticated', 'authenticated'),
@@ -29,20 +29,42 @@ do $$ begin perform pg_temp.login('aaaaaaaa-0000-4000-8000-000000000001'); end $
 set local role authenticated;
 delete from public.household_users where user_id = 'aaaaaaaa-0000-4000-8000-000000000001';
 reset role;
-select isnt_empty($$select 1 from public.households where id = 'aaaaaaaa-0000-4000-8000-0000000000a0'$$,
-  'kodu jääb alles, kui seal on veel teine seade');
+select is((select abandoned_at from public.households where id = 'aaaaaaaa-0000-4000-8000-0000000000a0'), null,
+  'teine seade on veel kodus: kodu pole mahajäetud');
 
 do $$ begin perform pg_temp.login('aaaaaaaa-0000-4000-8000-000000000002'); end $$;
 set local role authenticated;
 create temp table fresh as select public.create_household(array['Uus', 'Teine']) as id;
 reset role;
-select is_empty($$select 1 from public.households where id = 'aaaaaaaa-0000-4000-8000-0000000000a0'$$,
-  'viimase seadme uus kodu: vana kodu kustutati');
-select is_empty($$select 1 from public.members where household_id = 'aaaaaaaa-0000-4000-8000-0000000000a0'$$,
-  'koos liikmetega');
-select is_empty($$select 1 from public.chores where household_id = 'aaaaaaaa-0000-4000-8000-0000000000a0'$$,
-  'ja töödega');
-select isnt_empty('select 1 from public.households where id = (select id from fresh)', 'uus kodu on olemas');
+select isnt((select abandoned_at from public.households where id = 'aaaaaaaa-0000-4000-8000-0000000000a0'), null,
+  'viimane seade läks uude koju: vana kodu on mahajäetud');
+select isnt_empty($$select 1 from public.chores where household_id = 'aaaaaaaa-0000-4000-8000-0000000000a0'$$,
+  'aga tööd on veel alles (30 päeva)');
+
+-- Kutsekoodiga saab tagasi liituda
+do $$ begin perform pg_temp.login('aaaaaaaa-0000-4000-8000-000000000001'); end $$;
+set local role authenticated;
+select is(public.join_household('AAAA2222'), 'aaaaaaaa-0000-4000-8000-0000000000a0'::uuid, 'tagasi liitumine töötab');
+reset role;
+select is((select abandoned_at from public.households where id = 'aaaaaaaa-0000-4000-8000-0000000000a0'), null,
+  'tagasi liitumine tühjendab abandoned_at');
+
+-- Üle 30 päeva mahajäetud kodu kustutatakse järgmisel loomisel või liitumisel
+delete from public.household_users where household_id = 'aaaaaaaa-0000-4000-8000-0000000000a0';
+update public.households set abandoned_at = now() - interval '31 days'
+  where id = 'aaaaaaaa-0000-4000-8000-0000000000a0';
+-- Kodu, kust kaks viimast lahkusid korraga (abandoned_at jäi tühjaks): loetakse created_at järgi.
+insert into public.households (id, created_at) values ('dddddddd-0000-4000-8000-0000000000d0', now() - interval '40 days');
+insert into public.members (household_id, name, position) values
+  ('dddddddd-0000-4000-8000-0000000000d0', 'X', 0), ('dddddddd-0000-4000-8000-0000000000d0', 'Y', 1);
+do $$ begin perform pg_temp.login('aaaaaaaa-0000-4000-8000-000000000002'); end $$;
+set local role authenticated;
+select is(public.join_household('ZZZZ9999'), null, 'suvaline liitumiskatse käivitab koristuse');
+reset role;
+select is_empty($$select 1 from public.households where id in
+  ('aaaaaaaa-0000-4000-8000-0000000000a0', 'dddddddd-0000-4000-8000-0000000000d0')$$,
+  'üle 30 päeva mahajäetud kodud kustutati (ka see, kus abandoned_at puudus)');
+select isnt_empty('select 1 from public.households where id = (select id from fresh)', 'kasutuses kodu jäi alles');
 
 -- 2. Kodude loomise piirang: 10 tunnis
 do $$ begin perform pg_temp.login('cccccccc-0000-4000-8000-000000000001'); end $$;

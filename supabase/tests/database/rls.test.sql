@@ -126,11 +126,10 @@ select results_eq(
 select results_eq(
   $$select count(*)::int from public.household_users where household_id = 'bbbbbbbb-0000-4000-8000-0000000000b0'$$,
   $$values (1)$$, 'võõrasse koju ei lisandunud kedagi');
--- ua oli kodu A ainus seade, seega kodu kustutati koos liikmetega (#19).
--- Kui seadmeid on rohkem, jääb kodu alles: vt security_review.test.sql.
+-- Viimase seadme lahkumisel jääb kodu 30 päevaks alles (#19, security_review.test.sql).
 select is(
   (select count(*)::int from public.members where household_id = 'aaaaaaaa-0000-4000-8000-0000000000a0'),
-  0, 'viimase seadme lahkumisel kustutati kodu A koos liikmetega');
+  2, 'kodu A liikmed jäid alles pärast lahkumist');
 
 select * from finish();
 rollback;
