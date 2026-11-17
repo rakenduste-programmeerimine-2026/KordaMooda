@@ -58,7 +58,7 @@ Kodu loomisel või sellega liitumisel saab seade **anonüümse Supabase'i kasuta
 - **Kui kõik seadmed kaotavad sessiooni**, ei pääse koju enam keegi ligi. See on kontodeta lahenduse hind.
 - **"Lahku kodust"** eemaldab ainult selle seadme seose. Kodu jääb teistele alles.
 
-Integratsioonitestid ühise projekti vastu (loovad anonüümseid kasutajaid): `npm run test:integration`.
+Sisselogimise testid on `test/db/session.test.ts` (käivitub koos teistega: `npm run test:db:api`, vt "Andmebaasi testid").
 
 Rakenduses on ainult anon-võti, seega RLS kehtib alati. `service_role` võtit rakendus ei kasuta ja see ei tohi `.env.local`-isse sattuda.
 
@@ -70,6 +70,19 @@ npm run lint
 npm run build
 ```
 
+### Andmebaasi testid
+
+Testid jooksevad lokaalse Supabase'i vastu, seega on vaja Dockerit ja `npx supabase start`-i.
+
+```bash
+npm run test:db       # pgTAP: RLS ja mark_done/undo_done (supabase/tests/database/)
+npm run test:db:api   # Node päris API kaudu: samaaegsed vajutused ja sisselogimine (test/db/)
+```
+
+`test:db` käivitab iga faili transaktsioonis, mis lõpus tagasi keeratakse. Andmebaasi ei jää midagi maha.
+
+`test:db:api` vajab `.env.local`-is lokaalse Supabase'i URL-i ja anon-võtit ning `SUPABASE_DB_URL`-i (vt `.env.example`). Kui need puuduvad, jäetakse test vahele. Testid loovad ise testkodud ja anonüümsed kasutajad ning kustutavad need lõpus.
+
 ## Teadaolev piirang
 
 Rakendus kasutab veel brauseri `localStorage`-it. Andmebaasi skeem on olemas, aga frontend pole sellega veel ühendatud (#5, #11).
@@ -79,5 +92,5 @@ Rakendus kasutab veel brauseri `localStorage`-it. Andmebaasi skeem on olemas, ag
 - `src/lib/household.ts`: järjekorra loogika puhaste funktsioonidena
 - `src/lib/useHousehold.ts`: andmete lugemine ja salvestamine `localStorage`-is
 - `src/components/`: vaated
-- `test/`: loogika testid
-- `supabase/`: Supabase CLI seadistus ja andmebaasi migratsioonid
+- `test/`: loogika testid, `test/db/`: andmebaasi testid üle API
+- `supabase/`: Supabase CLI seadistus, migratsioonid ja pgTAP testid (`supabase/tests/`)
