@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Home, type RemoteChange } from "@/components/Home";
 import { StartScreen } from "@/components/StartScreen";
 import { changedChores, type Household } from "@/lib/household";
+import { useHouseholdRealtime } from "@/lib/useHouseholdRealtime";
 import { useStayFresh } from "@/lib/useStayFresh";
 
 type Props = {
@@ -30,9 +31,10 @@ export function App({ initial }: Props) {
     }
   }
 
-  // Pulls in what the other phone did. Supabase Realtime (useHouseholdRealtime) calls
-  // `refresh` too, once it is ready.
-  useStayFresh();
+  // Pulls in what the other phone did: when this phone wakes up or gets focus (useStayFresh)
+  // and the moment the other phone changes something (Supabase Realtime, #13).
+  const refresh = useStayFresh();
+  useHouseholdRealtime(household?.id ?? null, refresh);
 
   return (
     <MotionConfig reducedMotion="user">
