@@ -127,6 +127,7 @@ export async function createHousehold(names: string[]): Promise<Result<Household
 
 /** Joins an existing household with its invite code. Case, spaces and dashes don't matter. */
 export async function joinHousehold(code: string): Promise<Result<Household>> {
+  if (USE_SUPABASE) return runSupabase((supabase) => households.joinHousehold(supabase, code));
   return run(async () => {
     const household = mockJoin(store, code);
     await setSession(household.id);
@@ -150,6 +151,7 @@ export async function leaveHousehold(): Promise<Result<null>> {
 
 /** Makes a new invite code. The old one stops working. Returns the new code. */
 export async function newInviteCode(): Promise<Result<string>> {
+  if (USE_SUPABASE) return runSupabase((supabase) => households.newInviteCode(supabase));
   return run((householdId) => mockNewInviteCode(store, householdId));
 }
 

@@ -155,5 +155,5 @@ describe("andmebaas üle API", { skip }, () => {
     assert.equal(still?.name, "Pesu");
   });
 
-  test.todo("join_household vale koodiga ei lisa kedagi, õige koodiga lisab (#9)");
+  // join_household (#9): vt test/db/households.test.ts
 });

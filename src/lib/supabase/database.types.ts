@@ -127,8 +127,14 @@ isOneToOne: false
 "generate_invite_code":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"join_household":
+{ Args: { "code": string }; Returns: string
+                           },
 "mark_done":
 { Args: { "chore_id": string,"expected_member_id": string }; Returns: string
+                           },
+"new_invite_code":
+{ Args: Record<PropertyKey, never>; Returns: string
                            },
 "undo_done":
 { Args: { "chore_id": string }; Returns: string
