@@ -7,7 +7,12 @@ import { after, describe, test } from "node:test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { HouseholdError } from "../../src/lib/household.ts";
-import { createHousehold, joinHousehold, newInviteCode } from "../../src/lib/supabase/households.ts";
+import {
+  createHousehold,
+  importHousehold,
+  joinHousehold,
+  newInviteCode,
+} from "../../src/lib/supabase/households.ts";
 import { ensureUserId, getCurrentHousehold, getUserId } from "../../src/lib/supabase/session.ts";
 import type { Database } from "../../src/lib/supabase/database.types.ts";
 
@@ -129,5 +134,38 @@ describe("kodu loomine üle API", { skip }, () => {
     await ensureUserId(phone);
 
     await assert.rejects(newInviteCode(phone), HouseholdError);
+  });
+
+  test("prototüübi nimekiri viiakse üle koos järjekorra ja ajalooga (#15)", async () => {
+    // Exactly what the prototype kept in localStorage as kordamooda.v1 (number ids).
+    const saved = JSON.stringify({
+      members: [{ id: 0, name: "Mari" }, { id: 1, name: "Jüri" }],
+      chores: [
+        { id: 2, name: "Prügi", currentMemberId: 1, last: { memberId: 0, doneAt: "2026-11-16T08:00:00.000Z" } },
+        { id: 3, name: "Nõud", currentMemberId: 0, last: null },
+      ],
+      nextId: 4,
+    });
+    const phone = device();
+
+    const imported = await importHousehold(phone, saved);
+    const [mari, juri] = imported.members;
+    assert.deepEqual(imported.members.map((m) => m.name), ["Mari", "Jüri"]);
+    assert.deepEqual(
+      imported.chores.map((c) => [c.name, c.currentMemberId, c.last]),
+      [
+        ["Prügi", juri.id, { memberId: mari.id, doneAt: "2026-11-16T08:00:00+00:00" }],
+        ["Nõud", mari.id, null],
+      ],
+    );
+    assert.deepEqual(await getCurrentHousehold(phone), imported, "seade on üle viidud koduga seotud");
+  });
+
+  test("katkine nimekiri annab eestikeelse vea ega loo kasutajat (#15)", async () => {
+    const phone = device();
+
+    await assert.rejects(importHousehold(phone, "{katki"), /ei saanud lugeda/);
+    await assert.rejects(importHousehold(phone, JSON.stringify({ members: [{ id: 0, name: "Üksi" }], chores: [] })), HouseholdError);
+    assert.equal(await getUserId(phone), null);
   });
 });
