@@ -379,6 +379,8 @@ input {
 
 .home {
   padding-bottom: 7rem;
+  /* The "Tehtud" pulse grows past the screen edge; without this a phone zooms the page out. */
+  overflow-x: clip;
 }
 
 .topbar {
