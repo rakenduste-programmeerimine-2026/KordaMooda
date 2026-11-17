@@ -7,7 +7,7 @@ create function pg_temp.login(user_id uuid) returns void language sql as $$
     json_build_object('sub', user_id, 'role', 'authenticated')::text, true);
 $$;
 
-select plan(13);
+select plan(14);
 
 insert into auth.users (id, aud, role) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'authenticated', 'authenticated');
@@ -33,6 +33,8 @@ select results_eq(
   $$values ('Prügi', 'Jüri', 'Mari', '2026-11-16T08:00:00Z'::timestamptz),
            ('Nõud', 'Mari', null, null::timestamptz)$$,
   'tööd, järjekord ja "viimati tegi" jäid alles');
+select results_eq('select name from public.chores order by created_at, id',
+  $$values ('Prügi'), ('Nõud')$$, 'tööd on samas järjekorras nagu vanas nimekirjas');
 select is((select count(*)::int from public.chores where last_done_by is not null), 0,
   'üle viidud "Tehtud"-it ei saa tagasi võtta (last_done_by puudub)');
 

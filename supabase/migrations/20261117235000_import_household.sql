@@ -26,6 +26,7 @@ declare
   member_ids uuid[];
   member_count int;
   chore jsonb;
+  chore_index bigint;
   current_index int;
   last_index int;
   last_at timestamptz;
@@ -42,7 +43,9 @@ begin
   from public.members m
   where m.household_id = new_household;
 
-  for chore in select value from jsonb_array_elements(chores) loop
+  for chore, chore_index in
+    select value, ordinality from jsonb_array_elements(chores) with ordinality
+  loop
     current_index := (chore ->> 'current')::int;
     last_index := (chore ->> 'last')::int;
     last_at := (chore ->> 'last_done_at')::timestamptz;
@@ -56,13 +59,17 @@ begin
       raise exception 'Vigane nimekiri.' using errcode = '22023';
     end if;
 
-    insert into public.chores (household_id, name, current_member_id, last_member_id, last_done_at)
+    -- Kõik tööd luuakse ühes transaktsioonis, seega oleks now() kõigil sama ja nimekirja
+    -- järjekord (created_at) juhuslik. Iga järgmine saab ühe millisekundi hilisema aja.
+    insert into public.chores
+      (household_id, name, current_member_id, last_member_id, last_done_at, created_at)
     values (
       new_household,
       chore ->> 'name',
       member_ids[current_index + 1],
       member_ids[last_index + 1],
-      last_at
+      last_at,
+      now() + chore_index * interval '1 millisecond'
     );
   end loop;
 
