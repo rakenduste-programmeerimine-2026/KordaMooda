@@ -26,23 +26,39 @@ export function useHouseholdRealtime(householdId: Id | null, refresh: () => void
 
     const supabase = createClient();
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let channel: ReturnType<typeof supabase.channel> | undefined;
+    let stopped = false;
     const settle = () => {
       clearTimeout(timer);
       timer = setTimeout(refresh, SETTLE_MS);
     };
 
-    const channel = supabase
-      .channel(`household:${householdId}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "households", filter: `id=eq.${householdId}` },
-        settle,
-      )
-      .subscribe();
+    // The session comes from a cookie and is read asynchronously. Subscribing before it is
+    // there joins as `anon`, which may not see the households table, so Realtime rejects the
+    // subscription ("invalid column for filter id") and no events ever come. So: wait for the
+    // session and hand its token to Realtime first.
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (stopped || !data.session) return;
+      await supabase.realtime.setAuth(data.session.access_token);
+      if (stopped) return;
+
+      channel = supabase
+        .channel(`household:${householdId}`)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "households", filter: `id=eq.${householdId}` },
+          settle,
+        )
+        .subscribe((status, error) => {
+          if (status === "CHANNEL_ERROR") console.error("Realtime ei saanud tellida:", error);
+        });
+    })();
 
     return () => {
+      stopped = true;
       clearTimeout(timer);
-      void supabase.removeChannel(channel);
+      if (channel) void supabase.removeChannel(channel);
     };
   }, [householdId, refresh]);
 }
