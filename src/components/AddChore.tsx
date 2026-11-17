@@ -1,11 +1,12 @@
 "use client";
 
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, startTransition, useState, useTransition } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Sheet } from "@/components/Sheet";
+import { addChore } from "@/lib/actions";
 import {
-  addChore,
+  cleanChoreName,
   type Household,
   type Id,
   HouseholdError,
@@ -14,20 +15,21 @@ import {
   suggestStarter,
 } from "@/lib/household";
 import { snappy } from "@/lib/motion";
-import { saveHousehold } from "@/lib/useHousehold";
 
 const COMMON_CHORES = ["Prügi", "Nõud", "Koristamine", "Pesu"];
 
 type Props = {
   household: Household;
+  onChange: (household: Household) => void;
   onClose: () => void;
 };
 
-export function AddChore({ household, onClose }: Props) {
+export function AddChore({ household, onChange, onClose }: Props) {
   const [name, setName] = useState("");
   const [chosenStarterId, setChosenStarterId] = useState<Id | null>(null);
   const [error, setError] = useState("");
   const [added, setAdded] = useState("");
+  const [pending, startAdding] = useTransition();
 
   const starterId = chosenStarterId ?? suggestStarter(household).id;
   const suggestions = COMMON_CHORES.filter(
@@ -35,16 +37,31 @@ export function AddChore({ household, onClose }: Props) {
   );
 
   function add(choreName: string) {
+    if (pending) return;
+    let cleanName: string;
     try {
-      saveHousehold(addChore(household, choreName, starterId));
-      setAdded(`${choreName.trim()} lisatud.`);
-      setName("");
-      setChosenStarterId(null);
-      setError("");
+      // Same rules as the server, checked here first so mistakes show instantly.
+      cleanName = cleanChoreName(household, choreName);
     } catch (caught) {
       if (!(caught instanceof HouseholdError)) throw caught;
       setError(caught.message);
+      return;
     }
+    startAdding(async () => {
+      const result = await addChore(cleanName, starterId);
+      startTransition(() => {
+        if (!result.ok) {
+          if (result.latest) onChange(result.latest);
+          setError(result.error);
+          return;
+        }
+        onChange(result.data);
+        setAdded(`${cleanName} lisatud.`);
+        setName("");
+        setChosenStarterId(null);
+        setError("");
+      });
+    });
   }
 
   function submit(event: FormEvent) {
@@ -130,10 +147,11 @@ export function AddChore({ household, onClose }: Props) {
             />
             <motion.button
               className="button button-primary"
+              aria-disabled={pending || undefined}
               whileTap={{ scale: 0.95 }}
               transition={snappy}
             >
-              Lisa
+              {pending ? "Hetk…" : "Lisa"}
             </motion.button>
           </div>
           {error && (

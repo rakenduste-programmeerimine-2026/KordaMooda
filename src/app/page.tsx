@@ -1,28 +1,10 @@
-"use client";
+import { App } from "@/components/App";
+import { getHousehold } from "@/lib/actions";
 
-import { AnimatePresence, motion, MotionConfig } from "motion/react";
-import { Home } from "@/components/Home";
-import { StartScreen } from "@/components/StartScreen";
-import { useHousehold } from "@/lib/useHousehold";
-
-export default function Page() {
-  const household = useHousehold();
-
-  if (household === undefined) return null;
-
-  return (
-    <MotionConfig reducedMotion="user">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={household ? "home" : "start"}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {household ? <Home household={household} /> : <StartScreen />}
-        </motion.div>
-      </AnimatePresence>
-    </MotionConfig>
-  );
+/**
+ * The household is loaded on the server, so the first paint already shows whose turn it is
+ * (success criterion: visible within 10 seconds of opening the app).
+ */
+export default async function Page() {
+  return <App initial={await getHousehold()} />;
 }

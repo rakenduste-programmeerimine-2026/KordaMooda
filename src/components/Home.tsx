@@ -1,10 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useOptimistic, useRef, useState } from "react";
 import { AddChore } from "@/components/AddChore";
 import { ChoreCard } from "@/components/ChoreCard";
 import { Menu } from "@/components/Menu";
+import * as server from "@/lib/actions";
 import {
   type Chore,
   type Household,
@@ -14,20 +15,38 @@ import {
   removeChore,
 } from "@/lib/household";
 import { snappy, soft } from "@/lib/motion";
-import { isUnsaved, saveHousehold } from "@/lib/useHousehold";
+import type { Result } from "@/lib/result";
 
 const TOAST_MS = 8_000;
 /** The button stays under the finger, so a quick second tap must not count again. */
 const DONE_COOLDOWN_MS = 800;
 
+type Undo = { kind: "done" | "remove"; choreId: Id };
+
 type Toast = {
   key: number;
   message: string;
-  undo?: Household;
-  focusChoreId?: Id;
+  undo?: Undo;
 };
 
-export function Home({ household }: { household: Household }) {
+/** Shown at once, before the server has answered. */
+type Pending = { kind: "done"; choreId: Id; doneAt: string } | { kind: "remove"; choreId: Id };
+
+function applyPending(household: Household, change: Pending): Household {
+  return change.kind === "done"
+    ? markDone(household, change.choreId, change.doneAt)
+    : removeChore(household, change.choreId);
+}
+
+type Props = {
+  household: Household;
+  onChange: (household: Household | null) => void;
+};
+
+export function Home({ household: saved, onChange }: Props) {
+  // While a change is on its way to the server, the screen already shows it.
+  // If the server says no, React drops it and the saved copy shows again.
+  const [household, showPending] = useOptimistic(saved, applyPending);
   const { members, chores } = household;
   const [now, setNow] = useState(() => new Date().toISOString());
   const [editing, setEditing] = useState(false);
@@ -39,9 +58,30 @@ export function Home({ household }: { household: Household }) {
   const toastKey = useRef(0);
   const coolingDown = useRef(new Set<Id>());
 
-  function showToast(message: string, undo?: Household, focusChoreId?: Id) {
+  function showToast(message: string, undo?: Undo) {
     toastKey.current += 1;
-    setToast({ key: toastKey.current, message, undo, focusChoreId });
+    setToast({ key: toastKey.current, message, undo });
+  }
+
+  /** Sends a change to the server and keeps the screen in step with its answer. */
+  function send<T>(
+    change: Pending | null,
+    request: () => Promise<Result<T>>,
+    onSuccess: (data: T) => void,
+  ) {
+    startTransition(async () => {
+      if (change) showPending(change);
+      const result = await request();
+      startTransition(() => {
+        if (result.ok) {
+          onSuccess(result.data);
+        } else {
+          // Someone else changed it first: show their version, not our old copy.
+          if (result.latest) onChange(result.latest);
+          showToast(result.error);
+        }
+      });
+    });
   }
 
   // A phone can keep this page open overnight, so "täna" has to become "eile".
@@ -74,28 +114,44 @@ export function Home({ household }: { household: Household }) {
 
     const doneAt = new Date().toISOString();
     setNow(doneAt);
-    saveHousehold(markDone(household, chore.id, doneAt));
     const next = nextMember(members, chore.currentMemberId);
-    showToast(`${chore.name} tehtud. Järgmine: ${next.name}.`, household, chore.id);
+    showToast(`${chore.name} tehtud. Järgmine: ${next.name}.`, { kind: "done", choreId: chore.id });
+    // `currentMemberId` is whose turn this phone showed, so a second phone can't skip a person.
+    send(
+      { kind: "done", choreId: chore.id, doneAt },
+      () => server.markDone(chore.id, chore.currentMemberId),
+      onChange,
+    );
   }
 
-  function handleUndo({ undo, focusChoreId }: Toast) {
+  function handleUndo({ undo }: Toast) {
     if (!undo) return;
-    saveHousehold(undo);
-    showToast("Tagasi võetud.");
-    requestAnimationFrame(() => {
-      const target = document.querySelector<HTMLButtonElement>(
-        `[data-chore="${focusChoreId}"] button`,
-      );
-      (target ?? topButtonRef.current)?.focus();
+    const request =
+      undo.kind === "done"
+        ? () => server.undoDone(undo.choreId)
+        : () => server.undoRemoveChore(undo.choreId);
+    setToast(null);
+    send(null, request, (updated) => {
+      onChange(updated);
+      showToast("Tagasi võetud.");
+      requestAnimationFrame(() => {
+        const target = document.querySelector<HTMLButtonElement>(
+          `[data-chore="${undo.choreId}"] button`,
+        );
+        (target ?? topButtonRef.current)?.focus();
+      });
     });
   }
 
   function handleRemove(chore: Chore) {
-    saveHousehold(removeChore(household, chore.id));
-    showToast(`${chore.name} eemaldatud.`, household, chore.id);
+    showToast(`${chore.name} eemaldatud.`, { kind: "remove", choreId: chore.id });
     if (chores.length === 1) setEditing(false);
     topButtonRef.current?.focus();
+    send({ kind: "remove", choreId: chore.id }, () => server.removeChore(chore.id), onChange);
+  }
+
+  function handleLeave() {
+    send(null, server.leaveHousehold, () => onChange(null));
   }
 
   return (
@@ -114,12 +170,6 @@ export function Home({ household }: { household: Household }) {
           {editing ? "Valmis" : "Valikud"}
         </button>
       </header>
-
-      {isUnsaved() && (
-        <p className="notice" role="status">
-          See brauser ei luba andmeid salvestada. Muudatused kaovad, kui lehe sulged.
-        </p>
-      )}
 
       {chores.length === 0 ? (
         <motion.section
@@ -225,7 +275,12 @@ export function Home({ household }: { household: Household }) {
 
       <AnimatePresence>
         {sheet === "add" && (
-          <AddChore key="add" household={household} onClose={() => setSheet(null)} />
+          <AddChore
+            key="add"
+            household={household}
+            onChange={onChange}
+            onClose={() => setSheet(null)}
+          />
         )}
         {sheet === "menu" && (
           <Menu
@@ -235,7 +290,7 @@ export function Home({ household }: { household: Household }) {
               setEditing(true);
               setSheet(null);
             }}
-            onStartOver={() => saveHousehold(null)}
+            onLeave={handleLeave}
             onClose={() => setSheet(null)}
           />
         )}

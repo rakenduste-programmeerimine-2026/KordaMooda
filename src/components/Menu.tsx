@@ -8,11 +8,11 @@ import { snappy } from "@/lib/motion";
 type Props = {
   canRemove: boolean;
   onRemoveChores: () => void;
-  onStartOver: () => void;
+  onLeave: () => void;
   onClose: () => void;
 };
 
-export function Menu({ canRemove, onRemoveChores, onStartOver, onClose }: Props) {
+export function Menu({ canRemove, onRemoveChores, onLeave, onClose }: Props) {
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -33,10 +33,10 @@ export function Menu({ canRemove, onRemoveChores, onStartOver, onClose }: Props)
               exit={{ opacity: 0 }}
               transition={snappy}
             >
-              <p>See kustutab selles brauseris kõik inimesed ja tööd.</p>
+              <p>See seade lahkub kodust. Teised näevad nimekirja edasi.</p>
               <div className="menu-confirm-actions">
-                <button type="button" className="button button-danger" onClick={onStartOver}>
-                  Kustuta kõik
+                <button type="button" className="button button-danger" onClick={onLeave}>
+                  Lahku
                 </button>
                 <button
                   type="button"
@@ -49,14 +49,14 @@ export function Menu({ canRemove, onRemoveChores, onStartOver, onClose }: Props)
             </motion.div>
           ) : (
             <motion.button
-              key="start-over"
+              key="leave"
               type="button"
               className="menu-item"
               exit={{ opacity: 0 }}
               transition={{ duration: 0.1 }}
               onClick={() => setConfirming(true)}
             >
-              Alusta otsast
+              Lahku kodust
             </motion.button>
           )}
         </AnimatePresence>
