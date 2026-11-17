@@ -2,33 +2,45 @@ export const MIN_MEMBERS = 2;
 export const MAX_MEMBERS = 6;
 export const MAX_NAME_LENGTH = 24;
 export const MAX_CHORE_LENGTH = 40;
+/** No 0/O or 1/I/L, so a code read off a screen is typed in right. */
+export const INVITE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const INVITE_CODE_LENGTH = 8;
+
+/** Ids are uuids so they can come straight from the database. */
+export type Id = string;
 
 export type Member = {
-  id: number;
+  id: Id;
   name: string;
 };
 
 export type LastDone = {
-  memberId: number;
+  memberId: Id;
+  /** ISO time. Set by the server, never by the client. */
   doneAt: string;
 };
 
 export type Chore = {
-  id: number;
+  id: Id;
   name: string;
-  currentMemberId: number;
+  currentMemberId: Id;
   last: LastDone | null;
 };
 
 export type Household = {
+  id: Id;
+  /** Shared with a partner so they can join. */
+  inviteCode: string;
   /** Queue order. A member's colour comes from their index in this list. */
   members: Member[];
   chores: Chore[];
-  nextId: number;
 };
 
 /** A problem the user can fix. The message is shown to them as written. */
 export class HouseholdError extends Error {}
+
+/** Someone else changed the same thing first, e.g. both phones pressed "Tehtud". */
+export class ConflictError extends HouseholdError {}
 
 function cleanText(value: string): string {
   return value.trim().replace(/\s+/g, " ");
@@ -38,7 +50,23 @@ function sameText(a: string, b: string): boolean {
   return a.toLocaleLowerCase("et") === b.toLocaleLowerCase("et");
 }
 
-export function createHousehold(rawNames: string[]): Household {
+export function newId(): Id {
+  return crypto.randomUUID();
+}
+
+export function createInviteCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(INVITE_CODE_LENGTH));
+  // 256 is not a multiple of the alphabet size; the bias is far too small to matter here.
+  return Array.from(bytes, (byte) => INVITE_ALPHABET[byte % INVITE_ALPHABET.length]).join("");
+}
+
+/** Accepts what people actually type: lower case, spaces, dashes. */
+export function normalizeInviteCode(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** Validates and tidies people's names. Throws HouseholdError. */
+export function cleanMemberNames(rawNames: string[]): string[] {
   const names = rawNames.map(cleanText).filter(Boolean);
 
   if (names.length < MIN_MEMBERS) {
@@ -53,15 +81,20 @@ export function createHousehold(rawNames: string[]): Household {
   if (names.some((name, i) => names.findIndex((other) => sameText(other, name)) !== i)) {
     throw new HouseholdError("Nimed peavad erinema, et oleks näha, kelle kord on.");
   }
+  return names;
+}
 
+export function createHousehold(rawNames: string[]): Household {
   return {
-    members: names.map((name, id) => ({ id, name })),
+    id: newId(),
+    inviteCode: createInviteCode(),
+    members: cleanMemberNames(rawNames).map((name) => ({ id: newId(), name })),
     chores: [],
-    nextId: names.length,
   };
 }
 
-export function addChore(household: Household, rawName: string, firstMemberId: number): Household {
+/** Validates and tidies a chore name against the household's other chores. Throws HouseholdError. */
+export function cleanChoreName(household: Household, rawName: string): string {
   const name = cleanText(rawName);
 
   if (!name) throw new HouseholdError("Kirjuta töö nimi.");
@@ -71,22 +104,25 @@ export function addChore(household: Household, rawName: string, firstMemberId: n
   if (household.chores.some((chore) => sameText(chore.name, name))) {
     throw new HouseholdError(`${name} on juba nimekirjas.`);
   }
-
-  const chore: Chore = {
-    id: household.nextId,
-    name,
-    currentMemberId: firstMemberId,
-    last: null,
-  };
-  return { ...household, chores: [...household.chores, chore], nextId: household.nextId + 1 };
+  return name;
 }
 
-export function nextMember(members: Member[], memberId: number): Member {
+export function addChore(household: Household, rawName: string, firstMemberId: Id): Household {
+  const name = cleanChoreName(household, rawName);
+  if (!household.members.some((member) => member.id === firstMemberId)) {
+    throw new HouseholdError("Vali, kellest järjekord algab.");
+  }
+
+  const chore: Chore = { id: newId(), name, currentMemberId: firstMemberId, last: null };
+  return { ...household, chores: [...household.chores, chore] };
+}
+
+export function nextMember(members: Member[], memberId: Id): Member {
   const index = members.findIndex((member) => member.id === memberId);
   return members[(index + 1) % members.length];
 }
 
-export function markDone(household: Household, choreId: number, doneAt: string): Household {
+export function markDone(household: Household, choreId: Id, doneAt: string): Household {
   return {
     ...household,
     chores: household.chores.map((chore) =>
@@ -101,7 +137,7 @@ export function markDone(household: Household, choreId: number, doneAt: string):
   };
 }
 
-export function removeChore(household: Household, choreId: number): Household {
+export function removeChore(household: Household, choreId: Id): Household {
   return { ...household, chores: household.chores.filter((chore) => chore.id !== choreId) };
 }
 
@@ -139,12 +175,15 @@ export function parseHousehold(raw: string): Household | null {
     const data = JSON.parse(raw);
     const memberIds: unknown[] = data.members.map((member: Member) => member.id);
     const valid =
-      Number.isInteger(data.nextId) &&
+      typeof data.id === "string" &&
+      typeof data.inviteCode === "string" &&
       memberIds.length >= MIN_MEMBERS &&
-      data.members.every((member: Member) => typeof member.name === "string") &&
+      data.members.every(
+        (member: Member) => typeof member.id === "string" && typeof member.name === "string",
+      ) &&
       data.chores.every(
         (chore: Chore) =>
-          Number.isInteger(chore.id) &&
+          typeof chore.id === "string" &&
           typeof chore.name === "string" &&
           memberIds.includes(chore.currentMemberId),
       );

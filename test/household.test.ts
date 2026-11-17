@@ -3,9 +3,13 @@ import { test } from "node:test";
 import {
   addChore,
   createHousehold,
+  createInviteCode,
   HouseholdError,
   initialsFor,
+  INVITE_ALPHABET,
+  INVITE_CODE_LENGTH,
   markDone,
+  normalizeInviteCode,
   parseHousehold,
   relativeDay,
   removeChore,
@@ -15,8 +19,9 @@ import {
 const NOW = "2026-11-05T10:00:00.000Z";
 
 function setup(names = ["Mari", "Jaan"]) {
-  const home = addChore(createHousehold(names), "Prügi", 0);
-  return { home, chore: home.chores[0] };
+  const created = createHousehold(names);
+  const home = addChore(created, "Prügi", created.members[0].id);
+  return { home, chore: home.chores[0], ids: home.members.map((member) => member.id) };
 }
 
 function rejects(work: () => unknown) {
@@ -24,52 +29,50 @@ function rejects(work: () => unknown) {
 }
 
 test("marking done moves the turn along and wraps to the start", () => {
-  const { chore, home } = setup(["Mari", "Jaan", "Kati"]);
-  const turns: number[] = [];
+  const { chore, home, ids } = setup(["Mari", "Jaan", "Kati"]);
+  const turns: string[] = [];
   let current = home;
   for (let i = 0; i < 3; i++) {
     current = markDone(current, chore.id, NOW);
     turns.push(current.chores[0].currentMemberId);
   }
 
-  assert.deepEqual(turns, [1, 2, 0]);
+  assert.deepEqual(turns, [ids[1], ids[2], ids[0]]);
 });
 
 test("marking done records who did it", () => {
-  const { chore, home } = setup();
+  const { chore, home, ids } = setup();
 
-  assert.deepEqual(markDone(home, chore.id, NOW).chores[0].last, { memberId: 0, doneAt: NOW });
+  assert.deepEqual(markDone(home, chore.id, NOW).chores[0].last, { memberId: ids[0], doneAt: NOW });
 });
 
 test("each chore keeps its own queue", () => {
-  const { chore, home } = setup();
-  const withDishes = addChore(home, "Nõud", 0);
+  const { chore, home, ids } = setup();
+  const withDishes = addChore(home, "Nõud", ids[0]);
 
   const after = markDone(withDishes, chore.id, NOW);
 
-  assert.equal(after.chores[0].currentMemberId, 1);
-  assert.equal(after.chores[1].currentMemberId, 0);
+  assert.equal(after.chores[0].currentMemberId, ids[1]);
+  assert.equal(after.chores[1].currentMemberId, ids[0]);
 });
 
 test("avatars use one letter unless two names start the same way", () => {
   const members = [
-    { id: 0, name: "Mari" },
-    { id: 1, name: "Mart" },
-    { id: 2, name: "õie" },
+    { id: "a", name: "Mari" },
+    { id: "b", name: "Mart" },
+    { id: "c", name: "õie" },
   ];
 
   assert.equal(initialsFor(members, members[0]), "Ma");
   assert.equal(initialsFor(members, members[2]), "Õ");
 });
 
-test("every chore gets its own id, even after one is removed", () => {
-  const { chore, home } = setup();
-  const removed = removeChore(home, chore.id);
-  const added = addChore(removed, "Pesu", 1);
+test("every household, member and chore gets its own id", () => {
+  const { chore, home, ids } = setup();
+  const added = addChore(removeChore(home, chore.id), "Pesu", ids[1]);
+  const all = [home.id, ...ids, chore.id, added.chores[0].id];
 
-  assert.notEqual(added.chores[0].id, chore.id);
-  assert.notEqual(added.chores[0].id, 0);
-  assert.notEqual(added.chores[0].id, 1);
+  assert.equal(new Set(all).size, all.length);
 });
 
 test("people's names are validated and tidied", () => {
@@ -84,17 +87,32 @@ test("people's names are validated and tidied", () => {
 });
 
 test("chore names are validated and unique regardless of case", () => {
+  const { home, ids } = setup();
+
+  rejects(() => addChore(home, "  ", ids[0]));
+  rejects(() => addChore(home, "x".repeat(41), ids[0]));
+  rejects(() => addChore(home, "PRÜGI", ids[0]));
+});
+
+test("a chore's queue must start with someone in the household", () => {
   const { home } = setup();
 
-  rejects(() => addChore(home, "  ", 0));
-  rejects(() => addChore(home, "x".repeat(41), 0));
-  rejects(() => addChore(home, "PRÜGI", 0));
+  rejects(() => addChore(home, "Nõud", "someone-else"));
 });
 
 test("suggestStarter picks whoever has the fewest turns waiting", () => {
-  const { home } = setup();
-  assert.equal(suggestStarter(home).id, 1);
-  assert.equal(suggestStarter(addChore(home, "Nõud", 1)).id, 0);
+  const { home, ids } = setup();
+  assert.equal(suggestStarter(home).id, ids[1]);
+  assert.equal(suggestStarter(addChore(home, "Nõud", ids[1])).id, ids[0]);
+});
+
+test("invite codes are readable and accept how people type them", () => {
+  const code = createInviteCode();
+
+  assert.equal(code.length, INVITE_CODE_LENGTH);
+  assert.ok([...code].every((char) => INVITE_ALPHABET.includes(char)));
+  assert.notEqual(createInviteCode(), code);
+  assert.equal(normalizeInviteCode(" ab3d-ef7h "), "AB3DEF7H");
 });
 
 test("relativeDay counts calendar days, not 24-hour periods", () => {
@@ -111,11 +129,16 @@ test("parseHousehold reads saved data back and rejects damaged data", () => {
   assert.deepEqual(parseHousehold(JSON.stringify(home)), home);
   assert.equal(parseHousehold("{not json"), null);
   assert.equal(parseHousehold("null"), null);
-  assert.equal(parseHousehold('{"members":[],"chores":[],"nextId":0}'), null);
+  assert.equal(parseHousehold('{"id":"x","inviteCode":"X","members":[],"chores":[]}'), null);
   assert.equal(
     parseHousehold(
-      JSON.stringify({ ...home, chores: [{ ...home.chores[0], currentMemberId: 99 }] }),
+      JSON.stringify({ ...home, chores: [{ ...home.chores[0], currentMemberId: "nobody" }] }),
     ),
+    null,
+  );
+  // The old v1 format with numeric ids is not a household any more.
+  assert.equal(
+    parseHousehold('{"members":[{"id":0,"name":"A"},{"id":1,"name":"B"}],"chores":[],"nextId":2}'),
     null,
   );
 });

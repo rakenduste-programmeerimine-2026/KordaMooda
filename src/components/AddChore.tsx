@@ -7,6 +7,7 @@ import { Sheet } from "@/components/Sheet";
 import {
   addChore,
   type Household,
+  type Id,
   HouseholdError,
   initialsFor,
   MAX_CHORE_LENGTH,
@@ -24,7 +25,7 @@ type Props = {
 
 export function AddChore({ household, onClose }: Props) {
   const [name, setName] = useState("");
-  const [chosenStarterId, setChosenStarterId] = useState<number | null>(null);
+  const [chosenStarterId, setChosenStarterId] = useState<Id | null>(null);
   const [error, setError] = useState("");
   const [added, setAdded] = useState("");
 
