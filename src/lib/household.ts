@@ -154,6 +154,23 @@ export function markDone(household: Household, choreId: Id, doneAt: string): Hou
   };
 }
 
+/**
+ * Chores whose card looks different in `after`: the turn moved, it was undone, or it is new.
+ * Used to point out what another phone changed.
+ */
+export function changedChores(before: Household, after: Household): Id[] {
+  return after.chores
+    .filter((chore) => {
+      const old = before.chores.find((c) => c.id === chore.id);
+      return (
+        !old ||
+        old.currentMemberId !== chore.currentMemberId ||
+        old.last?.doneAt !== chore.last?.doneAt
+      );
+    })
+    .map((chore) => chore.id);
+}
+
 export function removeChore(household: Household, choreId: Id): Household {
   return { ...household, chores: household.chores.filter((chore) => chore.id !== choreId) };
 }

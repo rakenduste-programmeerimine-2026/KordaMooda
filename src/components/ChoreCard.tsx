@@ -30,6 +30,8 @@ type Props = {
   editing: boolean;
   /** No network: the card shows the last known turn, but can't be changed. */
   disabled?: boolean;
+  /** Changes when another phone changed this chore, so the card lights up briefly. */
+  flashKey?: number;
   onDone: () => void;
   onRemove: () => void;
   ref?: Ref<HTMLLIElement>;
@@ -56,6 +58,7 @@ export function ChoreCard({
   now,
   editing,
   disabled = false,
+  flashKey,
   onDone,
   onRemove,
   ref,
@@ -107,6 +110,16 @@ export function ChoreCard({
         dragTransition={{ bounceStiffness: 500, bounceDamping: 32 }}
         onDragEnd={handleDragEnd}
       >
+        {flashKey !== undefined && (
+          <motion.span
+            key={flashKey}
+            className="card-flash"
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 0] }}
+            transition={{ duration: 1.8, times: [0, 0.15, 1], ease: "easeOut" }}
+          />
+        )}
         <div className="card-top">
           <h2 className="card-chore">{chore.name}</h2>
           <div className="swap card-last">

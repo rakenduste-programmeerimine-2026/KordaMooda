@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   addChore,
+  changedChores,
   createHousehold,
   createInviteCode,
   formatInviteCode,
@@ -155,4 +156,16 @@ test("the code field accepts a typed code or a whole pasted invite link", () => 
 
 test("an invite code is shown in two groups", () => {
   assert.equal(formatInviteCode("ABCD2345"), "ABCD 2345");
+});
+
+test("changedChores finds what another phone changed", () => {
+  const { home, chore, ids } = setup();
+  const withDishes = addChore(home, "Nõud", ids[1]);
+  const dishes = withDishes.chores[1];
+
+  assert.deepEqual(changedChores(home, home), []);
+  assert.deepEqual(changedChores(home, withDishes), [dishes.id]);
+  assert.deepEqual(changedChores(withDishes, markDone(withDishes, chore.id, NOW)), [chore.id]);
+  // A removed chore has no card left to point at.
+  assert.deepEqual(changedChores(withDishes, removeChore(withDishes, dishes.id)), []);
 });

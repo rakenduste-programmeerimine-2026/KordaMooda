@@ -69,22 +69,31 @@ function ToastIcon({ tone }: { tone: Toast["tone"] }) {
 }
 
 /** Shown at once, before the server has answered. */
-type Pending = { kind: "done"; choreId: Id; doneAt: string } | { kind: "remove"; choreId: Id };
+type Pending =
+  | { kind: "done"; choreId: Id; memberId: Id; doneAt: string }
+  | { kind: "remove"; choreId: Id };
 
 function applyPending(household: Household, change: Pending): Household {
-  return change.kind === "done"
-    ? markDone(household, change.choreId, change.doneAt)
-    : removeChore(household, change.choreId);
+  if (change.kind === "remove") return removeChore(household, change.choreId);
+  // If a newer server copy already has this "Tehtud" (e.g. via realtime), the turn has
+  // moved on: applying it again would skip a person on screen.
+  const chore = household.chores.find((c) => c.id === change.choreId);
+  if (chore?.currentMemberId !== change.memberId) return household;
+  return markDone(household, change.choreId, change.doneAt);
 }
+
+/** Chores another phone changed. A new `key` means a new change to point out. */
+export type RemoteChange = { key: number; choreIds: Id[] };
 
 type Props = {
   household: Household;
   onChange: (household: Household | null) => void;
   /** Opens the invite sheet straight away, right after a new household was created. */
   welcome?: boolean;
+  remote?: RemoteChange | null;
 };
 
-export function Home({ household: saved, onChange, welcome = false }: Props) {
+export function Home({ household: saved, onChange, welcome = false, remote = null }: Props) {
   // While a change is on its way to the server, the screen already shows it.
   // If the server says no, React drops it and the saved copy shows again.
   const [household, showPending] = useOptimistic(saved, applyPending);
@@ -95,6 +104,16 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
   const [welcoming, setWelcoming] = useState(welcome);
   const [toast, setToast] = useState<Toast | null>(null);
   const online = useOnline();
+  const remoteChores = chores.filter((chore) => remote?.choreIds.includes(chore.id));
+  const remoteAnnouncement =
+    remoteChores.length > 0
+      ? `Teises telefonis muudetud: ${remoteChores
+          .map((chore) => {
+            const member = members.find((m) => m.id === chore.currentMemberId);
+            return `${chore.name}, järgmine ${member?.name}`;
+          })
+          .join("; ")}.`
+      : "";
 
   const toastRef = useRef<HTMLDivElement>(null);
   const topButtonRef = useRef<HTMLButtonElement>(null);
@@ -165,7 +184,7 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
     });
     // `currentMemberId` is whose turn this phone showed, so a second phone can't skip a person.
     send(
-      { kind: "done", choreId: chore.id, doneAt },
+      { kind: "done", choreId: chore.id, memberId: chore.currentMemberId, doneAt },
       () => server.markDone(chore.id, chore.currentMemberId),
       onChange,
     );
@@ -257,6 +276,7 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
                 now={now}
                 editing={editing}
                 disabled={!online}
+                flashKey={remote?.choreIds.includes(chore.id) ? remote.key : undefined}
                 onDone={() => handleDone(chore)}
                 onRemove={() => handleRemove(chore)}
               />
@@ -264,6 +284,10 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
           </AnimatePresence>
         </motion.ul>
       )}
+
+      <p className="visually-hidden" role="status">
+        {remoteAnnouncement}
+      </p>
 
       <div className="fab-region">
         <AnimatePresence>
