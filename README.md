@@ -2,6 +2,8 @@
 
 Rakendus koos elavatele paaridele ja korterikaaslastele, kes jagavad kodutöid. Avamisel on kohe näha, kelle kord iga töö on.
 
+**Avalik aadress:** <https://kordamooda.vercel.app>
+
 ## Põhifunktsioonid
 
 1. Kodutööde lisamine (prügi, nõud, koristamine, pesu või oma töö).
@@ -82,6 +84,15 @@ npm run test:db:api   # Node päris API kaudu: samaaegsed vajutused ja sisselogi
 `test:db` käivitab iga faili transaktsioonis, mis lõpus tagasi keeratakse. Andmebaasi ei jää midagi maha.
 
 `test:db:api` vajab `.env.local`-is lokaalse Supabase'i URL-i ja anon-võtit ning `SUPABASE_DB_URL`-i (vt `.env.example`). Kui need puuduvad, jäetakse test vahele. Testid loovad ise testkodud ja anonüümsed kasutajad ning kustutavad need lõpus.
+
+## Avaldamine (Vercel)
+
+Rakendus on Vercelis projektina `kordamooda` (Maiko konto). Production-aadress on <https://kordamooda.vercel.app> ja regioon on Stockholm.
+
+- **Keskkonnamuutujad** on Vercelis (Production ja Preview): `NEXT_PUBLIC_SUPABASE_URL` ja `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Uus muutuja lisatakse käsuga `npx vercel env add <NIMI> production` (ja `preview`).
+- **Deploy:** Vercel pole veel GitHubi repoga ühendatud, sest organisatsiooni repo ühendamiseks on vaja organisatsiooni omaniku luba. Seni teeb deploy Maiko käsitsi `main`-ist: `npx vercel deploy --prod`. Pärast ühendamist läheb iga `main`-i push automaatselt üles ja iga PR saab oma preview-lingi.
+- `.vercelignore` jätab `.env*` failid välja, nii et kohalikud saladused Vercelisse ei satu.
+- Supabase'i Authis pole lubatud URL-e vaja seadistada, sest anonüümne sisselogimine ei kasuta e-posti ega OAuthi suunamisi. Kui need kunagi lisanduvad, tuleb Verceli domeen lisada Supabase'is: Authentication → URL Configuration.
 
 ## Teadaolev piirang
 
