@@ -996,6 +996,57 @@ input {
   text-align: center;
 }
 
+/* Add to home screen */
+
+.install-hint {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem 0.875rem;
+  max-width: calc(72rem - 2 * var(--gutter));
+  margin: 0 var(--gutter) 0.75rem;
+  padding: 1rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+@media (min-width: 75rem) {
+  .install-hint {
+    margin-inline: auto;
+  }
+}
+
+/* Same picture as src/app/icon.svg. */
+.install-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, #1f45d8 50%, #ffc91f 50%);
+}
+
+.install-text p {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.install-text .install-title {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.install-share {
+  vertical-align: -0.2em;
+}
+
+.install-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 /* Loading */
 
 .skeleton-card {

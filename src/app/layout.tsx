@@ -10,6 +10,8 @@ const font = Onest({
 export const metadata: Metadata = {
   title: "KordaMööda",
   description: "Näitab koos elavatele inimestele kohe, kelle kord iga kodutöö on.",
+  // iPhone: open from the home screen without Safari's bars (#20).
+  appleWebApp: { capable: true, title: "KordaMööda", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
