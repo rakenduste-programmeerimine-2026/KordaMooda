@@ -83,14 +83,14 @@ isOneToOne: false
                   ]
                 },"households": {
                   Row: {
-                    "created_at": string,"id": string,"invite_code": string
+                    "changed_at": string,"created_at": string,"id": string,"invite_code": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"invite_code"?: string
+                    "changed_at"?: string,"created_at"?: string,"id"?: string,"invite_code"?: string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"invite_code"?: string
+                    "changed_at"?: string,"created_at"?: string,"id"?: string,"invite_code"?: string
                   }
                   Relationships: [
                     
