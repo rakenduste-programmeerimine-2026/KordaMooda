@@ -134,12 +134,11 @@ export async function createHousehold(names: string[]): Promise<Result<Household
 }
 
 /**
- * Whether `importHousehold` works on this server. Until it has a Supabase version, the
- * start screen doesn't offer it at all; the old list stays in the browser for later.
- * Maiko: when the Supabase version is ready, return true here too.
+ * Whether `importHousehold` works on this server. It does with both the mock and Supabase
+ * (#15); the start screen asks so it never offers something that would fail.
  */
 export async function canImportHousehold(): Promise<boolean> {
-  return !USE_SUPABASE;
+  return true;
 }
 
 /**
@@ -148,10 +147,7 @@ export async function canImportHousehold(): Promise<boolean> {
  * `saved` is the raw localStorage value; it is checked like any other input.
  */
 export async function importHousehold(saved: string): Promise<Result<Household>> {
-  if (USE_SUPABASE) {
-    // Maiko (#15): Supabase'i versioon, mis loob liikmed ja tööd koos järjekorraga.
-    return { ok: false, error: "Vana nimekirja üleviimine pole veel valmis." };
-  }
+  if (USE_SUPABASE) return runSupabase((supabase) => households.importHousehold(supabase, saved));
   return run(async () => {
     const household = mockImport(store, saved);
     await setSession(household.id);

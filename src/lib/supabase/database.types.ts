@@ -127,6 +127,9 @@ isOneToOne: false
 "generate_invite_code":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
+"import_household":
+{ Args: { "chores": Json,"member_names": (string)[] }; Returns: string
+                           },
 "join_household":
 { Args: { "code": string }; Returns: string
                            },

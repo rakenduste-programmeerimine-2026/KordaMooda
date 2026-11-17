@@ -5,6 +5,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   cleanMemberNames,
+  householdFromSaved,
   type Household,
   HouseholdError,
   INVITE_CODE_LENGTH,
@@ -72,4 +73,37 @@ export async function newInviteCode(supabase: Supabase): Promise<string> {
   if (error?.code === "P0002") throw new HouseholdError("Sa ei ole veel ühegi koduga liitunud.");
   if (error) throw error;
   return data;
+}
+
+/**
+ * Creates a household from a list an earlier version saved in this browser (#15), keeping
+ * its people, chores, whose turn it is and who did it last, and links this device to it.
+ * `saved` comes from the browser, so it is checked with the same rules as a new household
+ * (householdFromSaved) before anything is sent to the database. Throws HouseholdError.
+ */
+export async function importHousehold(supabase: Supabase, saved: string): Promise<Household> {
+  const household = householdFromSaved(saved);
+  const position = new Map(household.members.map((member, index) => [member.id, index]));
+  const now = Date.now();
+  const chores = household.chores.map((chore) => ({
+    name: chore.name,
+    current: position.get(chore.currentMemberId),
+    last: chore.last ? position.get(chore.last.memberId) : null,
+    // A phone's clock can be ahead; the database refuses times in the future.
+    last_done_at: chore.last ? new Date(Math.min(Date.parse(chore.last.doneAt), now)).toISOString() : null,
+  }));
+
+  await ensureUserId(supabase);
+  const { data: householdId, error } = await supabase.rpc("import_household", {
+    member_names: household.members.map((member) => member.name),
+    chores,
+  });
+  if (error?.code === TOO_MANY_ATTEMPTS) {
+    throw new HouseholdError("Liiga palju uusi kodusid. Proovi tunni aja pärast uuesti.");
+  }
+  if (error) throw error;
+
+  const imported = await loadHousehold(supabase, householdId);
+  if (!imported) throw new Error("Üle viidud kodu ei leitud. RLS ei luba seda lugeda?");
+  return imported;
 }
