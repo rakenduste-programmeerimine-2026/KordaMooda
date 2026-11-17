@@ -1,11 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Home } from "@/components/Home";
+import { useState } from "react";
+import { Home, type RemoteChange } from "@/components/Home";
 import { StartScreen } from "@/components/StartScreen";
-import type { Household } from "@/lib/household";
+import { changedChores, type Household } from "@/lib/household";
+import { useStayFresh } from "@/lib/useStayFresh";
 
 type Props = {
   /** What the server had when the page was rendered. */
@@ -15,22 +15,24 @@ type Props = {
 export function App({ initial }: Props) {
   const [household, setHousehold] = useState(initial);
   const [created, setCreated] = useState(false);
+  const [remote, setRemote] = useState<RemoteChange | null>(null);
 
-  // The server renders the page again when this device joins or leaves a household
-  // (the session cookie changes). Its copy is then the newest one.
+  // A new copy from the server: after joining or leaving (the session cookie changed),
+  // or after `refresh`. It is the newest one. Whatever differs from what this phone
+  // showed was changed somewhere else, so Home points it out.
   const [lastInitial, setLastInitial] = useState(initial);
   if (initial !== lastInitial) {
     setLastInitial(initial);
     setHousehold(initial);
+    if (household && initial && household.id === initial.id) {
+      const choreIds = changedChores(household, initial);
+      if (choreIds.length > 0) setRemote({ key: (remote?.key ?? 0) + 1, choreIds });
+    }
   }
 
-  // Back online: others may have changed things meanwhile, so fetch the newest state.
-  const router = useRouter();
-  useEffect(() => {
-    const refresh = () => router.refresh();
-    window.addEventListener("online", refresh);
-    return () => window.removeEventListener("online", refresh);
-  }, [router]);
+  // Pulls in what the other phone did. Supabase Realtime (useHouseholdRealtime) calls
+  // `refresh` too, once it is ready.
+  useStayFresh();
 
   return (
     <MotionConfig reducedMotion="user">
@@ -43,7 +45,12 @@ export function App({ initial }: Props) {
           transition={{ duration: 0.2 }}
         >
           {household ? (
-            <Home household={household} onChange={setHousehold} welcome={created} />
+            <Home
+              household={household}
+              onChange={setHousehold}
+              welcome={created}
+              remote={remote}
+            />
           ) : (
             <StartScreen
               onJoined={(joined, isNew) => {

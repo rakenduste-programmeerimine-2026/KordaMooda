@@ -77,14 +77,18 @@ function applyPending(household: Household, change: Pending): Household {
     : removeChore(household, change.choreId);
 }
 
+/** Chores another phone changed. A new `key` means a new change to point out. */
+export type RemoteChange = { key: number; choreIds: Id[] };
+
 type Props = {
   household: Household;
   onChange: (household: Household | null) => void;
   /** Opens the invite sheet straight away, right after a new household was created. */
   welcome?: boolean;
+  remote?: RemoteChange | null;
 };
 
-export function Home({ household: saved, onChange, welcome = false }: Props) {
+export function Home({ household: saved, onChange, welcome = false, remote = null }: Props) {
   // While a change is on its way to the server, the screen already shows it.
   // If the server says no, React drops it and the saved copy shows again.
   const [household, showPending] = useOptimistic(saved, applyPending);
@@ -95,6 +99,16 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
   const [welcoming, setWelcoming] = useState(welcome);
   const [toast, setToast] = useState<Toast | null>(null);
   const online = useOnline();
+  const remoteChores = chores.filter((chore) => remote?.choreIds.includes(chore.id));
+  const remoteAnnouncement =
+    remoteChores.length > 0
+      ? `Teises telefonis muudetud: ${remoteChores
+          .map((chore) => {
+            const member = members.find((m) => m.id === chore.currentMemberId);
+            return `${chore.name}, järgmine ${member?.name}`;
+          })
+          .join("; ")}.`
+      : "";
 
   const toastRef = useRef<HTMLDivElement>(null);
   const topButtonRef = useRef<HTMLButtonElement>(null);
@@ -257,6 +271,7 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
                 now={now}
                 editing={editing}
                 disabled={!online}
+                flashKey={remote?.choreIds.includes(chore.id) ? remote.key : undefined}
                 onDone={() => handleDone(chore)}
                 onRemove={() => handleRemove(chore)}
               />
@@ -264,6 +279,10 @@ export function Home({ household: saved, onChange, welcome = false }: Props) {
           </AnimatePresence>
         </motion.ul>
       )}
+
+      <p className="visually-hidden" role="status">
+        {remoteAnnouncement}
+      </p>
 
       <div className="fab-region">
         <AnimatePresence>
