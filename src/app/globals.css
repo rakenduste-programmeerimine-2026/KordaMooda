@@ -352,6 +352,76 @@ input {
   font-weight: 600;
 }
 
+.start-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--quiet);
+}
+
+.start-path {
+  position: relative;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-weight: 650;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.start-path[aria-pressed="true"] {
+  color: var(--ink);
+}
+
+.start-path > span:last-child {
+  position: relative;
+}
+
+.start-path-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface);
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+.code-input {
+  min-height: 3.75rem;
+  background: var(--surface);
+  font-size: 1.625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
+.code-input::placeholder {
+  color: var(--line);
+}
+
+.join-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.join-actions .button,
+.join-other .button {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.join-other {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
 /* Avatars */
 
 .avatar {
@@ -822,6 +892,47 @@ input {
 .menu-confirm-actions {
   display: flex;
   gap: 0.5rem;
+}
+
+.invite {
+  display: grid;
+  gap: 1.125rem;
+}
+
+.invite-lead {
+  color: var(--muted);
+}
+
+.invite-code {
+  padding: 1rem 1.125rem;
+  border-radius: 1.25rem;
+  background: var(--quiet);
+  text-align: center;
+}
+
+.invite-code-value {
+  font-size: 2.25rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+}
+
+.invite-link {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.invite-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.invite-status {
+  min-height: 1.45em;
+  margin-top: -0.5rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
 }
 
 @media (min-width: 40rem) {

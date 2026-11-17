@@ -4,10 +4,12 @@ import {
   addChore,
   createHousehold,
   createInviteCode,
+  formatInviteCode,
   HouseholdError,
   initialsFor,
   INVITE_ALPHABET,
   INVITE_CODE_LENGTH,
+  inviteCodeFromInput,
   markDone,
   normalizeInviteCode,
   parseHousehold,
@@ -141,4 +143,16 @@ test("parseHousehold reads saved data back and rejects damaged data", () => {
     parseHousehold('{"members":[{"id":0,"name":"A"},{"id":1,"name":"B"}],"chores":[],"nextId":2}'),
     null,
   );
+});
+
+test("the code field accepts a typed code or a whole pasted invite link", () => {
+  assert.equal(inviteCodeFromInput("abcd 2345"), "ABCD2345");
+  assert.equal(inviteCodeFromInput("ABCD-2345-XYZ"), "ABCD2345");
+  assert.equal(inviteCodeFromInput("https://kordamooda.ee/liitu/abcd2345"), "ABCD2345");
+  assert.equal(inviteCodeFromInput("Liitu: https://x.ee/liitu/ABCD2345?ref=1 "), "ABCD2345");
+  assert.equal(inviteCodeFromInput(""), "");
+});
+
+test("an invite code is shown in two groups", () => {
+  assert.equal(formatInviteCode("ABCD2345"), "ABCD 2345");
 });

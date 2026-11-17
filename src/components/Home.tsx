@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { startTransition, useEffect, useOptimistic, useRef, useState } from "react";
 import { AddChore } from "@/components/AddChore";
 import { ChoreCard } from "@/components/ChoreCard";
+import { Invite } from "@/components/Invite";
 import { Menu } from "@/components/Menu";
 import * as server from "@/lib/actions";
 import {
@@ -41,16 +42,19 @@ function applyPending(household: Household, change: Pending): Household {
 type Props = {
   household: Household;
   onChange: (household: Household | null) => void;
+  /** Opens the invite sheet straight away, right after a new household was created. */
+  welcome?: boolean;
 };
 
-export function Home({ household: saved, onChange }: Props) {
+export function Home({ household: saved, onChange, welcome = false }: Props) {
   // While a change is on its way to the server, the screen already shows it.
   // If the server says no, React drops it and the saved copy shows again.
   const [household, showPending] = useOptimistic(saved, applyPending);
   const { members, chores } = household;
   const [now, setNow] = useState(() => new Date().toISOString());
   const [editing, setEditing] = useState(false);
-  const [sheet, setSheet] = useState<"add" | "menu" | null>(null);
+  const [sheet, setSheet] = useState<"add" | "menu" | "invite" | null>(welcome ? "invite" : null);
+  const [welcoming, setWelcoming] = useState(welcome);
   const [toast, setToast] = useState<Toast | null>(null);
 
   const toastRef = useRef<HTMLDivElement>(null);
@@ -115,7 +119,10 @@ export function Home({ household: saved, onChange }: Props) {
     const doneAt = new Date().toISOString();
     setNow(doneAt);
     const next = nextMember(members, chore.currentMemberId);
-    showToast(`${chore.name} tehtud. Järgmine: ${next.name}.`, { kind: "done", choreId: chore.id });
+    showToast(`${chore.name} tehtud. Järgmine: ${next.name}.`, {
+      kind: "done",
+      choreId: chore.id,
+    });
     // `currentMemberId` is whose turn this phone showed, so a second phone can't skip a person.
     send(
       { kind: "done", choreId: chore.id, doneAt },
@@ -282,10 +289,23 @@ export function Home({ household: saved, onChange }: Props) {
             onClose={() => setSheet(null)}
           />
         )}
+        {sheet === "invite" && (
+          <Invite
+            key="invite"
+            code={household.inviteCode}
+            welcome={welcoming}
+            onNewCode={(inviteCode) => onChange({ ...saved, inviteCode })}
+            onClose={() => {
+              setSheet(null);
+              setWelcoming(false);
+            }}
+          />
+        )}
         {sheet === "menu" && (
           <Menu
             key="menu"
             canRemove={chores.length > 0}
+            onInvite={() => setSheet("invite")}
             onRemoveChores={() => {
               setEditing(true);
               setSheet(null);
