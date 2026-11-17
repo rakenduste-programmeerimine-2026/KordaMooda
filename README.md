@@ -47,12 +47,13 @@ npm run build
 
 ## Teadaolev piirang
 
-Rakendus kasutab veel brauseri `localStorage`-it. Andmebaasi skeem on olemas, aga frontend pole sellega veel ühendatud (#5, #11).
+Frontend kasutab server actioneid (`src/lib/actions.ts`), aga need töötavad veel mock-andmetega dev-serveri mälus. Andmed kaovad serveri taaskäivitamisel. Supabase'iga ühendatakse need #8, #9 ja #10 käigus.
 
 ## Ülesehitus
 
 - `src/lib/household.ts`: järjekorra loogika puhaste funktsioonidena
-- `src/lib/useHousehold.ts`: andmete lugemine ja salvestamine `localStorage`-is
+- `src/lib/actions.ts`: server actionid, ainus koht, kust frontend andmeid loeb ja muudab (leping, #7)
+- `src/lib/mock-store.ts`: mälus hoitav ajutine andmebaas, kuni Supabase on ühendatud
 - `src/components/`: vaated
 - `test/`: loogika testid
 - `supabase/`: Supabase CLI seadistus ja andmebaasi migratsioonid
