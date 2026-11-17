@@ -53,11 +53,13 @@ const PATHS: { path: Path; label: string; title: string; lead: string }[] = [
 ];
 
 type Props = {
+  /** Offer to move an old list from this browser; false until the server supports it. */
+  canImport: boolean;
   /** `created` is true for a new household, so the app can offer to invite a partner. */
   onJoined: (household: Household, created: boolean) => void;
 };
 
-export function StartScreen({ onJoined }: Props) {
+export function StartScreen({ canImport, onJoined }: Props) {
   const [path, setPath] = useState<Path>("create");
   const current = PATHS.find((item) => item.path === path)!;
   return (
@@ -83,7 +85,7 @@ export function StartScreen({ onJoined }: Props) {
         </OfflineNotice>
 
         {/* Imported lists open the invite sheet, like a new household. */}
-        <ImportSaved onImported={(household) => onJoined(household, true)} />
+        {canImport && <ImportSaved onImported={(household) => onJoined(household, true)} />}
 
         <motion.div variants={rise}>
           <AnimatePresence mode="wait" initial={false}>

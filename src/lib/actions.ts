@@ -134,6 +134,15 @@ export async function createHousehold(names: string[]): Promise<Result<Household
 }
 
 /**
+ * Whether `importHousehold` works on this server. Until it has a Supabase version, the
+ * start screen doesn't offer it at all; the old list stays in the browser for later.
+ * Maiko: when the Supabase version is ready, return true here too.
+ */
+export async function canImportHousehold(): Promise<boolean> {
+  return !USE_SUPABASE;
+}
+
+/**
  * Creates a household from a list an earlier version saved in this browser (#15),
  * keeping its people, chores and whose turn it is, and joins it on this device.
  * `saved` is the raw localStorage value; it is checked like any other input.
