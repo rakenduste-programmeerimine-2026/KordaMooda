@@ -7,9 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test test/*.test.ts"
+    "test": "node --test test/*.test.ts",
+    "test:db": "supabase test db",
+    "test:db:api": "node --env-file-if-exists=.env.local --test test/db/*.test.ts",
+    "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
+    "db:types:remote": "supabase gen types typescript --project-id diiftdfkcrhfpyuxnkde > src/lib/supabase/database.types.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.0",
     "motion": "^14.9.1",
     "next": "16.4.5",
     "react": "19.3.0",
@@ -21,6 +27,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
+    "postgres": "^3.4.9",
     "supabase": "^3.2.0",
     "typescript": "^5"
   },
