@@ -4,6 +4,18 @@ Rakendus koos elavatele paaridele ja korterikaaslastele, kes jagavad kodutöid. 
 
 **Avalik aadress:** <https://kordamooda.vercel.app>
 
+## Probleem
+
+- **Kasutaja:** inimene, kes elab koos elukaaslasega ja jagab temaga kodutöid. Ta on meie päris kontakt (nimi ja kontakt on õpetajal eraldi).
+- **Probleem:** kodutööde jagamist on raske meeles pidada ja üle vaadata.
+- **Praegune lahendus:** kodutööd ja järjekord on paberil. Seda pole telefonis näha ja seda peab käsitsi uuendama.
+
+## Ulatus
+
+Üks põhiline kasutajateekond: loo kodu → lisa tööd → näe, kelle kord on → märgi tehtuks.
+Kontosid pole: seade seotakse koduga anonüümse sessiooniga ja kaaslane liitub kutsekoodiga.
+Välja jäävad: kaaslase lisamine hiljem (#47), töö täpsustus ja kalender (#48).
+
 ## Põhifunktsioonid
 
 1. Kodutööde lisamine (prügi, nõud, koristamine, pesu või oma töö).
@@ -131,3 +143,47 @@ Ilma `.env.local`-ita töötavad server actionid mälus hoitava mockiga (`src/li
 - `src/components/`: vaated
 - `test/`: loogika testid, `test/db/`: andmebaasi testid üle API
 - `supabase/`: Supabase CLI seadistus, migratsioonid ja pgTAP testid (`supabase/tests/`)
+
+## Projekti seis (Projekt 1)
+
+Kursuse nõuded on failis [SPEC.md](SPEC.md). Kasutajatesti tulemused on failis [FEEDBACK.md](FEEDBACK.md).
+
+### Tehtud
+
+- [x] Kolm põhifunktsiooni: töö lisamine, automaatne järjekord, tehtuks märkimine (koos tagasivõtmisega)
+- [x] Läbiv tee: kasutajaliides → server actionid (`src/lib/actions.ts`) → Supabase
+- [x] Edukriteerium: Android-telefonis avakuva ikoonist „kelle kord“ nägemiseni alla 5 s (nõue 10 s), vt #21
+- [x] Sisendite valideerimine kliendis ja serveris (`src/lib/household.ts`), RLS igal tabelil, turvaülevaatus (#19)
+- [x] Saladused gitist väljas, `.env.example` ilma võtmeteta
+- [x] Testid ja CI igal PR-il (vt „Testid ja tulemused“)
+- [x] Avaldatud aadressil <https://kordamooda.vercel.app>
+- [x] Kasutajatest päris kontaktiga, tagasiside salvestatud ja kokku võetud ([FEEDBACK.md](FEEDBACK.md))
+- [x] Parandused tagasiside põhjal: avakuva vihje ei sega enam tööde lisamist, nupp „Valmis“ on nüüd „Tagasi“ (#49)
+
+### Tegemata
+
+- [ ] Kaaslase lisamine olemasolevasse koju: kontakti jaoks kõige olulisem puudus (#47)
+- [ ] Töö täpsustus ja kalender: uued funktsioonid, jäävad mahust välja (#48)
+- [ ] Testimine iPhone'is ja Safaris (avakuva küpsised, 7 päeva piirang) (#21)
+- [ ] Kontakt proovis ainult arvutis. Telefonis ja parandatud versiooni pole kontaktiga veel uuesti proovitud.
+- [ ] Vercel pole GitHubiga ühendatud. Deploy tehakse käsitsi.
+
+### Testid ja tulemused
+
+| Mis | Käsk | Tulemus |
+|---|---|---|
+| Järjekorra loogika, mock, turvapäised | `npm test` | 30/30 läbib |
+| RLS, „Tehtud“/tagasivõtmine, liitumine, pehme kustutamine (pgTAP) | `npm run test:db` | läbib CI-s |
+| Samaaegsed vajutused, sessioon, realtime päris API kaudu | `npm run test:db:api` | läbib CI-s |
+| Lint ja build | `npm run lint`, `npm run build` | läbib CI-s |
+| Käsitsi telefonis (Android + arvuti, production) | vt #21 | kodu loomine, liitumine, realtime, avakuva: ✅ |
+
+### Kes mida tegi
+
+Rollid ja tööjärjekord on #22-s. Iga töö on tehtud issue ja PR-iga, mille vaatas üle teine tiimiliige.
+
+| Inimene | Roll | Peamised tööd |
+|---|---|---|
+| Mirko Aadva (`Aadva`) | Andmebaas ja kvaliteet | Supabase'i seadistus ja skeem, RLS (#3), aatomiline „Tehtud“ (#4), andmebaasi testid (#17), CI (#16) |
+| Maiko Nigul (`maiko-nigul`) | Backend ja turvalisus | API leping (#7), Supabase'i klient (#5), anonüümne sisselogimine (#6), server actionid (#8–#10), Vercel (#18), realtime andmebaas (#13), turvaülevaatus (#19) |
+| Glen Paas (`GlenPaas32`) | Frontend ja UX | Kasutajaliides, server actionite kasutamine (#11), liitumisvaade (#12), olekud (#14), realtime vaates (#13), PWA (#20), vanade andmete üleviimine (#15) |
