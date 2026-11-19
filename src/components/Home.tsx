@@ -234,7 +234,7 @@ export function Home({ household: saved, onChange, welcome = false, remote = nul
           className="button button-quiet"
           onClick={() => (editing ? setEditing(false) : setSheet("menu"))}
         >
-          {editing ? "Valmis" : "Valikud"}
+          {editing ? "Tagasi" : "Valikud"}
         </button>
       </header>
 
@@ -242,8 +242,11 @@ export function Home({ household: saved, onChange, welcome = false, remote = nul
         Ühendus puudub. Näed viimast teadaolevat seisu. Muuta saad, kui internet on tagasi.
       </OfflineNotice>
 
-      {/* After the first chore, so it doesn't get in the way of adding one. */}
-      {chores.length > 0 && !editing && sheet === null && <InstallHint />}
+      {/* Only once someone has marked a chore done. Shown right after the first chore was added,
+          the user test contact took it for the place to add chores (FEEDBACK.md). */}
+      {chores.some((chore) => chore.last !== null) && !editing && sheet === null && (
+        <InstallHint />
+      )}
 
       {chores.length === 0 ? (
         <motion.section
