@@ -43,7 +43,7 @@ Punktid 1 ja 2 (`src/components/Home.tsx`):
 - **Avakuva vihje** tuleb nüüd ette alles siis, kui mõni töö on vähemalt korra tehtuks märgitud. Esimest tööd lisades ja kohe pärast seda ei ole vihjet enam ees ning „Lisa töö“ on ainus asi, mida teha.
 - Eemaldamisrežiimi päisenupp **„Valmis“ on nüüd „Tagasi“**. „Valmis“ meenutas töö tehtuks märkimist, aga nupp tegelikult ainult viib tagasi tavavaatesse.
 
-Kontakt ei ole parandusi veel uuesti proovinud. _Täita, kui proovib: kas läks paremaks._
+Kontakt ei ole parandusi veel uuesti proovinud. Muudatused on väikesed, seega eraldi kordustesti ei tehtud.
 
 ## Mis jäi pooleli
 
